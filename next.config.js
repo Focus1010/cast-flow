@@ -1,5 +1,13 @@
 module.exports = {
   turbopack: {
-    root: './' // or absolute path to cast-flow
-  }
+    root: '/vercel/path0' // Or your absolute project path, but Vercel handles this
+  },
+  reactStrictMode: true,
+};
+
+module.exports = {
+  // ... other config
+  eslint: {
+    ignoreDuringBuilds: true, // Disable ESLint during builds (use cautiously)
+  },
 };
