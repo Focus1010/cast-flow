@@ -1,3 +1,4 @@
+import React from "react";
 import { supabase } from "../../lib/supabase";
 import { ethers } from "ethers";
 import contractABI from "../../utils/contractABI.json";
