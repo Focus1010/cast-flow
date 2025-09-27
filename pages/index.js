@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { ethers } from "ethers";
+import { useAccount, useWriteContract } from 'wagmi';
 import { supabase } from "../lib/supabase";
 import contractABI from "../utils/contractABI.json"; // Get from Remix
 
 export default function SchedulerPage() {
+  const { address, isConnected } = useAccount(); // Wagmi for wallet auto-connect
+  const { writeContract } = useWriteContract(); // For contract interactions
   const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin}
   const [posts, setPosts] = useState([]);
   const [thread, setThread] = useState([{ id: Date.now(), content: "" }]);
@@ -13,7 +15,7 @@ export default function SchedulerPage() {
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
 
-  // Automatically attempt to load user on app open (from localStorage)
+  // Automatically load user (from localStorage or frame session)
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -90,15 +92,14 @@ export default function SchedulerPage() {
         cast_id: castId
       });
       if (error) throw error;
-      if (window.ethereum) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []); // Connect wallet
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, contractABI, signer);
-        await contract.registerScheduledPost(castId, timestamp, user.wallet);
-      } else {
-        alert("Install Metamask to interact with contract.");
-      }
+      if (!isConnected) return alert("Connect wallet first.");
+      // Use Wagmi for contract call
+      writeContract({
+        abi: contractABI,
+        address: process.env.CONTRACT_ADDRESS,
+        functionName: 'registerScheduledPost',
+        args: [castId, timestamp, address],
+      });
       setPosts([...posts, { _id: Date.now(), posts: validPosts.map(p => p.content), datetime, cast_id: castId }]);
       await supabase.from('users').update({ monthly_used: monthlyUsed + 1 }).eq('fid', user.fid);
       setThread([{ id: Date.now(), content: "" }]);
@@ -253,4 +254,4 @@ export default function SchedulerPage() {
       )}
     </div>
   );
-};
+}
