@@ -15,7 +15,7 @@ export default function SchedulerPage() {
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
 
-  // Automatically load user (from localStorage or frame session)
+  // Automatically attempt to load user on app open (from localStorage)
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
