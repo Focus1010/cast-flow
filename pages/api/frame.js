@@ -7,6 +7,13 @@ const config = new Configuration({
 });
 const neynar = new NeynarAPIClient(config);
 
+const userRes = await fetch(`https://api.neynar.com/v1/farcaster/user?fid=${fid}`, {
+  headers: { 'api_key': process.env.NEYNAR_API_KEY },
+});
+const userData = await userRes.json();
+const wallet = userData.result.user.verifiedAddresses[0] || '';
+// Store in Supabase/localStorage
+
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     // Return frame metadata (initial frame view)
