@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { supabase } from "../lib/supabase";
 import contractABI from "../utils/contractABI.json"; // Get from Remix
-import { QRCodeCanvas } from 'qrcode.react'; // Changed from default import to named import
 
 export default function SchedulerPage() {
   const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin}
@@ -13,58 +12,14 @@ export default function SchedulerPage() {
   const [limit, setLimit] = useState(10); // Free default
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
-  const [showQR, setShowQR] = useState(false);
-  const [qrLink, setQrLink] = useState('');
 
-  // Sign In with Farcaster (SIWF)
-  const signInWithFarcaster = async () => {
-    try {
-      const nonceResponse = await fetch('https://api.neynar.com/v2/farcaster/signer', {
-        method: 'POST',
-        headers: { 'api_key': process.env.NEYNAR_API_KEY },
-      });
-      const { token, deepLink } = await nonceResponse.json();
-      // Show QR instead of alert
-      setQrLink(deepLink);
-      setShowQR(true);
-      let signed = false;
-      while (!signed) {
-        const statusRes = await fetch(`https://api.neynar.com/v2/farcaster/signer?token=${token}`, {
-          headers: { 'api_key': process.env.NEYNAR_API_KEY },
-        });
-        const status = await statusRes.json();
-        if (status.state === 'completed') {
-          const { fid, signer_uuid } = status;
-          const userRes = await fetch(`https://api.neynar.com/v1/farcaster/user?fid=${fid}`, {
-            headers: { 'api_key': process.env.NEYNAR_API_KEY },
-          });
-          const userData = await userRes.json();
-          const wallet = userData.result.user.verifiedAddresses[0] || ''; // Fallback if no verified address
-          const { error } = await supabase.from('users').upsert({
-            fid,
-            wallet,
-            signer_uuid,
-            monthly_used: 0,
-            package_type: null,
-            premium_expiry: 0,
-            is_admin: fid === Number(process.env.ADMIN_FID)
-          });
-          if (!error) {
-            const newUser = { fid, wallet, signer_uuid, is_admin: fid === Number(process.env.ADMIN_FID) };
-            setUser(newUser);
-            localStorage.setItem('user', JSON.stringify(newUser));
-          }
-          signed = true;
-          setShowQR(false);
-        }
-        await new Promise(r => setTimeout(r, 5000));
-      }
-    } catch (error) {
-      console.error("SIWF error:", error);
-      alert("Sign in failed.");
-      setShowQR(false);
+  // Load user from localStorage on mount (from frame auth or previous session)
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
-  };
+  }, []);
 
   // Load data
   useEffect(() => {
@@ -105,38 +60,56 @@ export default function SchedulerPage() {
   };
 
   const handleSchedule = async () => {
-  if (!user) return alert("Sign in first.");
-  if (!datetime) return alert("Select date/time.");
-  if (!isUnlimited && monthlyUsed >= limit) return alert(`Limit reached for ${packageInfo || "Free"}. Buy a package!`);
-  const validPosts = thread.filter((p) => p.content.trim());
-  if (validPosts.length === 0) return alert("Write something.");
-  const timestamp = Math.floor(new Date(datetime).getTime() / 1000);
+    if (!user) return alert("Authenticate via frame first.");
+    if (!datetime) return alert("Select date/time.");
+    if (!isUnlimited && monthlyUsed >= limit) return alert(`Limit reached for ${packageInfo || "Free"}. Buy a package!`);
+    const validPosts = thread.filter((p) => p.content.trim());
+    if (validPosts.length === 0) return alert("Write something.");
+    const timestamp = Math.floor(new Date(datetime).getTime() / 1000);
+    try {
+      const response = await fetch('https://api.neynar.com/v2/farcaster/cast', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api_key': process.env.NEYNAR_API_KEY,
+          'x-neynar-experimental': 'true'
+        },
+        body: JSON.stringify({
+          signer_uuid: user.signer_uuid,
+          text: validPosts.map(p => p.content).join('\n\n---\n\n'),
+          scheduled_at: timestamp
+        })
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const data = await response.json();
+      const castId = data.hash;
+      const { error } = await supabase.from('scheduled_posts').insert({
+        user_id: user.fid,
+        posts: validPosts.map(p => p.content),
+        datetime: new Date(datetime).toISOString(),
+        cast_id: castId
+      });
+      if (error) throw error;
+      // Register in contract (use Metamask for signer)
+      if (window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []); // Connect wallet
+        const signer = provider.getSigner();
+        const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, contractABI, signer);
+        await contract.registerScheduledPost(castId, timestamp, user.wallet);
+      } else {
+        alert("Install Metamask to interact with contract.");
+      }
+      setPosts([...posts, { _id: Date.now(), posts: validPosts.map(p => p.content), datetime, cast_id: castId }]);
+      await supabase.from('users').update({ monthly_used: monthlyUsed + 1 }).eq('fid', user.fid);
+      setThread([{ id: Date.now(), content: "" }]);
+      setDatetime("");
+    } catch (error) {
+      console.error(error);
+      alert("Scheduling failed: " + error.message);
+    }
+  };
 
-  try {
-    const response = await fetch("/api/schedule", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        signer_uuid: user.signer_uuid,
-        text: validPosts.map(p => p.content).join('\n\n---\n\n'),
-        scheduled_at: timestamp,
-        user_fid: user.fid,
-      }),
-    });
-
-    if (!response.ok) throw new Error(await response.text());
-    const data = await response.json();
-    const castId = data.castId;
-
-    setPosts([...posts, { _id: Date.now(), posts: validPosts.map(p => p.content), datetime, cast_id: castId }]);
-    setThread([{ id: Date.now(), content: "" }]);
-    setDatetime("");
-    alert("Scheduled successfully!");
-  } catch (error) {
-    console.error(error);
-    alert("Scheduling failed: " + error.message);
-  }
-};
   const removePost = async (id) => {
     if (window.confirm("Delete scheduled post?")) {
       const { error } = await supabase.from('scheduled_posts').delete().eq('id', id);
@@ -174,7 +147,7 @@ export default function SchedulerPage() {
       <h2 className="mb-3">Post Scheduler</h2>
 
       {!user ? (
-        <button className="btn" onClick={signInWithFarcaster}>Sign In with Farcaster</button>
+        <p className="small">Use this app in Warpcast as a Frame for automatic authentication. Open the frame URL: {process.env.VERCEL_URL || 'http://localhost:3000'}/api/frame</p>
       ) : (
         <>
           <div className="tag mb-3">
@@ -278,13 +251,6 @@ export default function SchedulerPage() {
             )}
           </div>
         </>
-      )}
-      {showQR && (
-        <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'white', padding: '20px', zIndex: 1000 }}>
-          <QRCodeCanvas value={qrLink} />
-          <p>Scan with Warpcast app</p>
-          <button onClick={() => setShowQR(false)}>Close</button>
-        </div>
       )}
     </div>
   );

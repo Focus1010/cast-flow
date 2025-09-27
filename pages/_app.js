@@ -1,11 +1,15 @@
+import { ThemeProvider } from 'next-themes';
 import '../styles/globals.css';
-import Layout from '../components/Layout.js';
+import Layout from '../components/Layout';
+import { MiniAppProvider } from '@neynar/react';
 
 function MyApp({ Component, pageProps }) {
   return (
-    <Layout>
-      <Component {...pageProps} />
-    </Layout>
+    <MiniAppProvider analyticsEnabled={true}>
+      <Layout>
+        <Component {...pageProps} />
+      </Layout>
+    </MiniAppProvider>
   );
 }
 

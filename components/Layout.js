@@ -1,62 +1,36 @@
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';  // If needed for other Supabase calls; optional here
-// Add SIWF logic if global
+import { useTheme } from 'next-themes';
+import { FaMoon, FaSun } from 'react-icons/fa';
 
-export default function Layout({ children }) {
-  const [user, setUser] = useState(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+const Layout = ({ children }) => {
+  const { theme, setTheme } = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-  // Fetch user from localStorage (stored after SIWF in index.js)
-  const storedUser = localStorage.getItem('user');
-  if (storedUser) {
-    setUser(JSON.parse(storedUser));
-  }
-}, []);
-
-  const toggleTheme = () => {
-    const current = document.body.getAttribute("data-theme") || "dark";
-    const next = current === "dark" ? "light" : "dark";
-    document.body.setAttribute("data-theme", next);
-    localStorage.setItem("theme", next);
+  const toggleMenu = () => {
+    setMenuOpen(!menuOpen);
   };
 
   return (
     <div className="app">
-      <header className="header" style={{ justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ fontWeight: 800, fontSize: 30 }}>Cast Flow</div>
-          <nav className="desktop-nav nav">
+      <header className="header">
+        <div className="logo">Cast Flow</div>
+        <button className="hamburger" onClick={toggleMenu}>
+          ☰
+        </button>
+        <nav className="nav">
+          <div className={`nav-menu ${menuOpen ? 'active' : ''}`}>
             <Link href="/">Scheduler</Link>
             <Link href="/leaderboard">Leaderboard</Link>
-            <Link href="/tips">Micro-Tips</Link>
+            <Link href="/tips">Tips Configuration</Link>
             <Link href="/packages">Buy Package</Link>
             <Link href="/profile">Profile</Link>
-          </nav>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-          <div className="mobile-nav">
-            <button className="btn-ghost" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>☰</button>
-            {mobileMenuOpen && (
-              <div className="dropdown">
-                <Link href="/" onClick={() => setMobileMenuOpen(false)}>Scheduler</Link>
-                <Link href="/leaderboard" onClick={() => setMobileMenuOpen(false)}>Leaderboard</Link>
-                <Link href="/tips" onClick={() => setMobileMenuOpen(false)}>Micro-Tips</Link>
-                <Link href="/packages" onClick={() => setMobileMenuOpen(false)}>Buy Package</Link>
-                <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>Profile</Link>
-              </div>
-            )}
           </div>
-          {user ? (
-            <button className="btn-ghost" onClick={() => { setUser(null); localStorage.removeItem('user'); }}>Disconnect</button>
-          ) : (
-            <button className="btn" onClick={() => { /* SIWF */ }}>Sign In</button>
-          )}
-        </div>
+        </nav>
       </header>
-      <button className="theme-toggle" onClick={toggleTheme}>🌓</button>
       <main>{children}</main>
     </div>
   );
-}
+};
+
+export default Layout;
