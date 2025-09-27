@@ -1,0 +1,13 @@
+{
+  "miniapp": {
+    "version": "1",
+    "name": "Cast Flow",
+    "iconUrl": "https://ibb.co/7J5zdfq2",  
+    "homeUrl": "https://your-app-domain.com/",  
+    "imageUrl": "https://ibb.co/7J5zdfq2",  
+    "buttonTitle": "🚀 Schedule Casts",
+    "splashImageUrl": "https://ibb.co/7J5zdfq2",
+    "splashBackgroundColor": "#0f172a",
+    "webhookUrl": "https://your-app-domain.com/api/webhook"  
+  }
+}

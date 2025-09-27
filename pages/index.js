@@ -13,35 +13,45 @@ export default function SchedulerPage() {
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
 
-  // Load data from localStorage (set by frame auth)
+  // Automatically attempt to load user on app open (from localStorage or frame session)
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
+    } else {
+      // For web view, auth is not automatic without interaction; direct to frame
+      console.log('Use Farcaster Frame for automatic auth');
     }
   }, []);
 
-  // Load data
+  // Load data once user is set
   useEffect(() => {
     if (user) {
       const fetchData = async () => {
-        const { data: u } = await supabase.from('users').select('*').eq('fid', user.fid).single();
-        if (u) {
-          // Monthly reset check
-          const lastMonth = new Date(u.last_reset || 0).getMonth();
-          const currentMonth = new Date().getMonth();
-          if (lastMonth !== currentMonth) {
-            await supabase.from('users').update({ monthly_used: 0, last_reset: new Date().toISOString() }).eq('fid', user.fid);
-            setMonthlyUsed(0);
-          } else {
-            setMonthlyUsed(u.monthly_used || 0);
+        try {
+          const { data: u, error } = await supabase.from('users').select('*').eq('fid', user.fid).single();
+          if (error) throw error;
+          if (u) {
+            // Monthly reset check
+            const lastMonth = new Date(u.last_reset || 0).getMonth();
+            const currentMonth = new Date().getMonth();
+            if (lastMonth !== currentMonth) {
+              await supabase.from('users').update({ monthly_used: 0, last_reset: new Date().toISOString() }).eq('fid', user.fid);
+              setMonthlyUsed(0);
+            } else {
+              setMonthlyUsed(u.monthly_used || 0);
+            }
+            setPackageInfo(u.package_type);
+            setIsUnlimited(u.is_admin || u.package_type === "Unlimited");
+            setLimit(u.is_admin ? Infinity : u.package_type === "Starter" ? 15 : u.package_type === "Pro" ? 30 : u.package_type === "Elite" ? 60 : 10);
           }
-          setPackageInfo(u.package_type);
-          setIsUnlimited(u.is_admin || u.package_type === "Unlimited");
-          setLimit(u.is_admin ? Infinity : u.package_type === "Starter" ? 15 : u.package_type === "Pro" ? 30 : u.package_type === "Elite" ? 60 : 10);
+          const { data: p, error: pError } = await supabase.from('scheduled_posts').select('*').eq('user_id', user.fid);
+          if (pError) throw pError;
+          setPosts(p || []);
+        } catch (error) {
+          console.error("Error fetching data:", error);
+          alert("Failed to load data. Please try again.");
         }
-        const { data: p } = await supabase.from('scheduled_posts').select('*').eq('user_id', user.fid);
-        setPosts(p || []);
       };
       fetchData();
     }
@@ -146,7 +156,7 @@ export default function SchedulerPage() {
       <h2 className="mb-3">Post Scheduler</h2>
 
       {!user ? (
-        <p className="small">Use this app in Warpcast as a Frame for automatic authentication. Open the frame URL: {process.env.VERCEL_URL || 'https://cast-flow-64ad.vercel.app/'}/api/frame</p>
+        <p className="small">Open this app as a Farcaster Frame in Warpcast for automatic authentication. Frame URL: {process.env.VERCEL_URL || 'http://localhost:3000'}/api/frame</p>
       ) : (
         <>
           <div className="tag mb-3">
@@ -253,4 +263,4 @@ export default function SchedulerPage() {
       )}
     </div>
   );
-}
+};
