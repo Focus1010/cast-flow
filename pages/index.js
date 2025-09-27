@@ -13,7 +13,7 @@ export default function SchedulerPage() {
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
 
-  // Load user from localStorage on mount (from frame auth or previous session)
+  // Load data from localStorage (set by frame auth)
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -90,7 +90,6 @@ export default function SchedulerPage() {
         cast_id: castId
       });
       if (error) throw error;
-      // Register in contract (use Metamask for signer)
       if (window.ethereum) {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []); // Connect wallet

@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useTheme } from 'next-themes';
-import { FaMoon, FaSun } from 'react-icons/fa';
+import { useRouter } from 'next/router';
 
 const Layout = ({ children }) => {
-  const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const router = useRouter();
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
+  };
+
+  const handleCloseMenu = () => {
+    setMenuOpen(false);
   };
 
   return (
@@ -20,11 +23,11 @@ const Layout = ({ children }) => {
         </button>
         <nav className="nav">
           <div className={`nav-menu ${menuOpen ? 'active' : ''}`}>
-            <Link href="/">Scheduler</Link>
-            <Link href="/leaderboard">Leaderboard</Link>
-            <Link href="/tips">Tips Configuration</Link>
-            <Link href="/packages">Buy Package</Link>
-            <Link href="/profile">Profile</Link>
+            <Link href="/" onClick={handleCloseMenu}>Scheduler</Link>
+            <Link href="/leaderboard" onClick={handleCloseMenu}>Leaderboard</Link>
+            <Link href="/tips" onClick={handleCloseMenu}>Tips Configuration</Link>
+            <Link href="/packages" onClick={handleCloseMenu}>Buy Package</Link>
+            <Link href="/profile" onClick={handleCloseMenu}>Profile</Link>
           </div>
         </nav>
       </header>
