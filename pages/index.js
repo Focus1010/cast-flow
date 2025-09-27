@@ -146,7 +146,7 @@ export default function SchedulerPage() {
       <h2 className="mb-3">Post Scheduler</h2>
 
       {!user ? (
-        <p className="small">Use this app in Warpcast as a Frame for automatic authentication. Open the frame URL: {process.env.VERCEL_URL || 'http://localhost:3000'}/api/frame</p>
+        <p className="small">Use this app in Warpcast as a Frame for automatic authentication. Open the frame URL: {process.env.VERCEL_URL || 'https://cast-flow-64ad.vercel.app/'}/api/frame</p>
       ) : (
         <>
           <div className="tag mb-3">
