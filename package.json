@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@farcaster/frame-wagmi-connector": "^1.0.0",
     "@farcaster/miniapp-wagmi-connector": "^1.0.0",
     "@neynar/nodejs-sdk": "^3.34.0",
     "@neynar/react": "^1.2.13",

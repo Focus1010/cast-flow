@@ -1,15 +1,28 @@
-import { ThemeProvider } from 'next-themes';
 import '../styles/globals.css';
 import Layout from '../components/Layout';
-import { MiniAppProvider } from '@neynar/react';
+import { WagmiProvider } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createConfig, http } from 'wagmi';
+import { base } from 'wagmi/chains';
+import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
+
+const queryClient = new QueryClient();
+
+const config = createConfig({
+  chains: [base],
+  transports: { [base.id]: http() },
+  connectors: [farcasterMiniApp()],
+});
 
 function MyApp({ Component, pageProps }) {
   return (
-    <MiniAppProvider analyticsEnabled={true}>
-      <Layout>
-        <Component {...pageProps} />
-      </Layout>
-    </MiniAppProvider>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <Layout>
+          <Component {...pageProps} />
+        </Layout>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
 
