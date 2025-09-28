@@ -23,7 +23,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-icons": "^5.5.0",
-    "viem": "^2.37.8",
+    "viem": "^2.37.9",
     "wagmi": "^2.17.5"
   },
   "devDependencies": {
