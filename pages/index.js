@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { useAccount, useWriteContract } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useWriteContract } from 'wagmi';
 import { supabase } from "../lib/supabase";
 import contractABI from "../utils/contractABI.json"; // Get from Remix
 
 export default function SchedulerPage() {
-  const { address, isConnected } = useAccount(); // Wagmi for wallet auto-connect
-  const { writeContract } = useWriteContract(); // For contract interactions
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect(); // For connecting wallet
+  const { disconnect } = useDisconnect(); // For disconnect
+  const { writeContract } = useWriteContract();
   const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin}
   const [posts, setPosts] = useState([]);
   const [thread, setThread] = useState([{ id: Date.now(), content: "" }]);
@@ -15,13 +17,48 @@ export default function SchedulerPage() {
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
 
-  // Automatically attempt to load user on app open (from localStorage)
+  // Load user from localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
   }, []);
+
+  // After wallet connect, auto-fetch Farcaster FID via Neynar
+  useEffect(() => {
+    if (isConnected && address && !user) {
+      const fetchFid = async () => {
+        try {
+          const response = await fetch(`https://api.neynar.com/v2/farcaster/user-by-address?address=${address}`, {
+            headers: { 'api_key': process.env.NEYNAR_API_KEY },
+          });
+          if (!response.ok) throw new Error(await response.text());
+          const data = await response.json();
+          const fid = data.fid;
+          const signer_uuid = data.signer_uuid || ''; // If available
+          const is_admin = fid === Number(process.env.ADMIN_FID);
+          const newUser = { fid, wallet: address, signer_uuid, is_admin };
+          setUser(newUser);
+          localStorage.setItem('user', JSON.stringify(newUser));
+          // Upsert to Supabase
+          await supabase.from('users').upsert({
+            fid,
+            wallet: address,
+            signer_uuid,
+            monthly_used: 0,
+            package_type: null,
+            premium_expiry: 0,
+            is_admin
+          });
+        } catch (error) {
+          console.error("Farcaster fetch error:", error);
+          alert("Failed to connect Farcaster. Try again.");
+        }
+      };
+      fetchFid();
+    }
+  }, [isConnected, address]);
 
   // Load data
   useEffect(() => {
@@ -147,7 +184,7 @@ export default function SchedulerPage() {
       <h2 className="mb-3">Post Scheduler</h2>
 
       {!user ? (
-        <p className="small">Connect Wallet First</p>
+        <button className="btn" onClick={connect}>Connect Wallet</button>
       ) : (
         <>
           <div className="tag mb-3">
