@@ -2,13 +2,19 @@ import React, { useState, useEffect } from "react";
 import { useAccount, useConnect, useDisconnect, useWriteContract } from 'wagmi';
 import { supabase } from "../lib/supabase";
 import contractABI from "../utils/contractABI.json"; // Get from Remix
+import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
+
+const config = new Configuration({
+  apiKey: process.env.NEYNAR_API_KEY,
+});
+const neynar = new NeynarAPIClient(config);
 
 export default function SchedulerPage() {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
   const { writeContract } = useWriteContract();
-  const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin}
+  const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin, username, bio, etc.}
   const [posts, setPosts] = useState([]);
   const [thread, setThread] = useState([{ id: Date.now(), content: "" }]);
   const [datetime, setDatetime] = useState("");
@@ -17,7 +23,7 @@ export default function SchedulerPage() {
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
 
-  // Load user from localStorage if previously connected
+  // Automatically load user from localStorage on app open
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -25,7 +31,7 @@ export default function SchedulerPage() {
     }
   }, []);
 
-  // After wallet connect, auto-fetch Farcaster FID and details via Neynar
+  // After wallet connect, auto-fetch Farcaster details via Neynar
   useEffect(() => {
     if (isConnected && address && !user) {
       const fetchFarcasterData = async () => {
@@ -38,7 +44,10 @@ export default function SchedulerPage() {
           const fid = data.fid;
           const signer_uuid = data.signer_uuid || '';
           const is_admin = fid === Number(process.env.ADMIN_FID);
-          const newUser = { fid, wallet: address, signer_uuid, is_admin };
+          // Fetch more user info (username, bio, etc.)
+          const userRes = await neynar.v1.user(fid);
+          const { username, bio, followers } = userRes.result.user; // Example fields
+          const newUser = { fid, wallet: address, signer_uuid, is_admin, username, bio, followers };
           setUser(newUser);
           localStorage.setItem('user', JSON.stringify(newUser));
           // Upsert to Supabase
@@ -178,116 +187,116 @@ export default function SchedulerPage() {
     }
   };
 
-return (
-  <div className="card">
-    <h2 className="mb-3">Post Scheduler</h2>
+  return (
+    <div className="card">
+      <h2 className="mb-3">Post Scheduler</h2>
 
-    {!user ? (
-      <button className="btn" onClick={connect}>Connect Wallet</button>
-    ) : (
-      <>
-        <div className="tag mb-3">
-          {isUnlimited ? "Unlimited Scheduling" : `Package: ${packageInfo || "Free"} — ${monthlyUsed}/${limit} used this month`}
-        </div>
+      {!user ? (
+        <button className="btn" onClick={connect}>Connect Wallet</button>
+      ) : (
+        <>
+          <div className="tag mb-3">
+            {isUnlimited ? "Unlimited Scheduling" : `Package: ${packageInfo || "Free"} — ${monthlyUsed}/${limit} used this month`}
+          </div>
 
-        {thread.map((p, idx) => (
-          <div key={p.id} style={{ marginBottom: "10px" }}>
-            <textarea
-              className="input"
-              placeholder={`Post ${idx + 1}`}
-              value={p.content}
-              onChange={(e) => handleThreadChange(p.id, e.target.value)}
+          {thread.map((p, idx) => (
+            <div key={p.id} style={{ marginBottom: "10px" }}>
+              <textarea
+                className="input"
+                placeholder={`Post ${idx + 1}`}
+                value={p.content}
+                onChange={(e) => handleThreadChange(p.id, e.target.value)}
+                disabled={!isUnlimited && monthlyUsed >= limit}
+                style={{ minHeight: "100px", resize: "vertical", width: "100%" }}
+              />
+              {thread.length > 1 && (
+                <button
+                  className="btn-ghost"
+                  style={{ marginTop: "4px", color: "red" }}
+                  onClick={() => deleteThreadPost(p.id)}
+                >
+                  🗑 Delete Post {idx + 1}
+                </button>
+              )}
+            </div>
+          ))}
+
+          <button
+            className="btn-ghost"
+            style={{ marginBottom: "10px" }}
+            onClick={addThreadPost}
+            disabled={!isUnlimited && monthlyUsed >= limit}
+          >
+            + Add Another Post
+          </button>
+
+          <div style={{ marginBottom: "16px" }}>
+            <label htmlFor="datetime" style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "14px" }}>
+              Schedule Time
+            </label>
+            <input
+              id="datetime"
+              type="datetime-local"
+              className="datetime-input"
+              value={datetime}
+              onChange={(e) => setDatetime(e.target.value)}
               disabled={!isUnlimited && monthlyUsed >= limit}
-              style={{ minHeight: "100px", resize: "vertical", width: "100%" }}
             />
-            {thread.length > 1 && (
-              <button
-                className="btn-ghost"
-                style={{ marginTop: "4px", color: "red" }}
-                onClick={() => deleteThreadPost(p.id)}
-              >
-                🗑 Delete Post {idx + 1}
-              </button>
+          </div>
+
+          <button
+            className="btn"
+            onClick={handleSchedule}
+            disabled={!isUnlimited && monthlyUsed >= limit}
+          >
+            Schedule Post
+          </button>
+
+          <div style={{ marginTop: "20px" }}>
+            <h3 className="mb-2">Scheduled Posts</h3>
+            {posts.length === 0 ? (
+              <p className="small">No scheduled posts yet.</p>
+            ) : (
+              <ul style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {posts.map((entry) => (
+                  <li
+                    key={entry.id || entry._id}
+                    className="list-item"
+                    style={{ border: "1px solid #ccc", padding: "10px", borderRadius: "6px" }}
+                  >
+                    <div>
+                      {entry.posts.map((text, i) => (
+                        <p key={i} style={{ marginBottom: "6px" }}>
+                          {text}
+                        </p>
+                      ))}
+                      <span className="small">
+                        Scheduled for: {new Date(entry.datetime).toLocaleString()}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                      <button
+                        className="btn-ghost"
+                        style={{ color: "red" }}
+                        onClick={() => removePost(entry.id || entry._id)}
+                      >
+                        ✖ Remove
+                      </button>
+                      <button
+                        className="btn-ghost"
+                        style={{ color: "green" }}
+                        onClick={() => handlePostNow(entry.id || entry._id)}
+                      >
+                        ✅ Post Now
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
-        ))}
-
-        <button
-          className="btn-ghost"
-          style={{ marginBottom: "10px" }}
-          onClick={addThreadPost}
-          disabled={!isUnlimited && monthlyUsed >= limit}
-        >
-          + Add Another Post
-        </button>
-
-        <div style={{ marginBottom: "16px" }}>
-          <label htmlFor="datetime" style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "14px" }}>
-            Schedule Time
-          </label>
-          <input
-            id="datetime"
-            type="datetime-local"
-            className="datetime-input"
-            value={datetime}
-            onChange={(e) => setDatetime(e.target.value)}
-            disabled={!isUnlimited && monthlyUsed >= limit}
-          />
-        </div>
-
-        <button
-          className="btn"
-          onClick={handleSchedule}
-          disabled={!isUnlimited && monthlyUsed >= limit}
-        >
-          Schedule Post
-        </button>
-
-        <div style={{ marginTop: "20px" }}>
-          <h3 className="mb-2">Scheduled Posts</h3>
-          {posts.length === 0 ? (
-            <p className="small">No scheduled posts yet.</p>
-          ) : (
-            <ul style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {posts.map((entry) => (
-                <li
-                  key={entry.id || entry._id}
-                  className="list-item"
-                  style={{ border: "1px solid #ccc", padding: "10px", borderRadius: "6px" }}
-                >
-                  <div>
-                    {entry.posts.map((text, i) => (
-                      <p key={i} style={{ marginBottom: "6px" }}>
-                        {text}
-                      </p>
-                    ))}
-                    <span className="small">
-                      Scheduled for: {new Date(entry.datetime).toLocaleString()}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                    <button
-                      className="btn-ghost"
-                      style={{ color: "red" }}
-                      onClick={() => removePost(entry.id || entry._id)}
-                    >
-                      ✖ Remove
-                    </button>
-                    <button
-                      className="btn-ghost"
-                      style={{ color: "green" }}
-                      onClick={() => handlePostNow(entry.id || entry._id)}
-                    >
-                      ✅ Post Now
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </>
-    )}
-  </div>
-);
+        </>
+      )}
+    </div>
+  );
 }
