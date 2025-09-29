@@ -25,23 +25,30 @@ export default function SchedulerPage() {
       setUser(JSON.parse(storedUser));
     }
   }, []);
+  
+  // Auto-connect wallet if ready
+  useEffect(() => {
+    if (!isConnected && connectors[0]?.ready) {
+      connect({ connector: connectors[0] });
+    }
+  }, [isConnected, connectors, connect]);
 
   // Auto-fetch Farcaster details after wallet connect
   useEffect(() => {
     if (isConnected && address && !user) {
       const fetchFarcasterData = async () => {
         try {
-          const response = await fetch(`https://api.neynar.com/v1/farcaster/user-by-address?address=${address}`, {
-            headers: { 'api_key': process.env.NEYNAR_API_KEY },
+          const response = await fetch( `https://api.neynar.com/v2/farcaster/user-by-verification?address=${address}`, {
+            headers: { 'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
           });
           if (!response.ok) throw new Error(await response.text());
           const data = await response.json();
           const fid = data.fid;
           const signer_uuid = data.signer_uuid || '';
-          const is_admin = fid === Number(process.env.ADMIN_FID);
+          const is_admin = fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID);
           // Fetch more info (username, bio)
-          const userRes = await fetch(`https://api.neynar.com/v1/farcaster/user?fid=${fid}`, {
-            headers: { 'api_key': process.env.NEYNAR_API_KEY },
+          const userRes = await fetch(`https://api.neynar.com/v2/farcaster/user?fid=${fid}`, {
+            headers: { 'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
           });
           const userData = await userRes.json();
           const { username, bio } = userData.result.user;
