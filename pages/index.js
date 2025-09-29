@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAccount, useConnect, useDisconnect, useSendCalls } from "wagmi";
 import { encodeFunctionData, parseUnits } from "viem";
 import { supabase } from "../lib/supabase";
-import contractABI from "../utils/contractABI.json"; // ABI from Remix
+import contractABI from "../utils/contractABI.json";
 
 export default function SchedulerPage() {
   const { address, isConnected } = useAccount();
@@ -10,76 +10,82 @@ export default function SchedulerPage() {
   const { disconnect } = useDisconnect();
   const { sendCalls } = useSendCalls();
 
-  const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin, username, bio}
+  const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [thread, setThread] = useState([{ id: Date.now(), content: "" }]);
   const [datetime, setDatetime] = useState("");
   const [packageInfo, setPackageInfo] = useState(null);
-  const [limit, setLimit] = useState(10); // Free default
+  const [limit, setLimit] = useState(10);
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
 
-  // Auto-connect wallet if ready
+  // Auto-load user from localStorage
   useEffect(() => {
-    if (!isConnected && connectors[0]?.ready) {
-      connect({ connector: connectors[0] });
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
-  }, [isConnected, connectors, connect]);
+  }, []);
 
-  // Init user auth via Neynar + Supabase
+  // Auto-fetch Farcaster details after wallet connect
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        // Step 1: resolve fid from wallet
-        const res = await fetch(
-          `https://api.neynar.com/v2/farcaster/user-by-verification?address=${address}`,
-          {
-            headers: { api_key: process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
-          }
-        );
-        if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-
-        const fid = data.result.user.fid;
-        const signer_uuid = data.result.user.custody_address || "";
-        const is_admin = fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID);
-
-        // Step 2: get profile info
-        const userRes = await fetch(
-          `https://api.neynar.com/v2/farcaster/user?fid=${fid}`,
-          {
-            headers: { api_key: process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
-          }
-        );
-        const userData = await userRes.json();
-        const { username, profile } = userData.result.user;
-
-        const newUser = {
-          fid,
-          wallet: address,
-          signer_uuid,
-          is_admin,
-          username,
-          bio: profile?.bio?.text || "",
-        };
-
-        setUser(newUser);
-        localStorage.setItem("user", JSON.stringify(newUser));
-
-        // Step 3: sync with Supabase
-        await supabase.from("users").upsert(newUser);
-      } catch (error) {
-        console.error("Farcaster fetch error:", error);
-        alert("Failed to connect Farcaster.");
-      }
-    };
-
     if (isConnected && address && !user) {
-      initAuth();
+      const fetchFarcasterData = async () => {
+        try {
+          // Get fid via Neynar
+          const res = await fetch(
+            `https://api.neynar.com/v2/farcaster/user-by-verification?address=${address}`,
+            {
+              headers: {
+                Authorization: `Bearer ${process.env.NEXT_PUBLIC_NEYNAR_API_KEY}`,
+              },
+            }
+          );
+
+          if (!res.ok) throw new Error(await res.text());
+          const data = await res.json();
+
+          const fid = data.result?.user?.fid;
+          if (!fid) throw new Error("No fid found for this address.");
+
+          const signer_uuid = data.result.user.signer_uuid || "";
+          const is_admin = fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID);
+
+          // Fetch extra profile info
+          const userRes = await fetch(
+            `https://api.neynar.com/v2/farcaster/user?fid=${fid}`,
+            {
+              headers: {
+                Authorization: `Bearer ${process.env.NEXT_PUBLIC_NEYNAR_API_KEY}`,
+              },
+            }
+          );
+
+          const userData = await userRes.json();
+          const { username, bio } = userData.result.user;
+
+          const newUser = {
+            fid,
+            wallet: address,
+            signer_uuid,
+            is_admin,
+            username,
+            bio,
+          };
+
+          setUser(newUser);
+          localStorage.setItem("user", JSON.stringify(newUser));
+          await supabase.from("users").upsert(newUser);
+        } catch (error) {
+          console.error("Farcaster fetch error:", error);
+          alert("Failed to connect Farcaster. Check your API key.");
+        }
+      };
+      fetchFarcasterData();
     }
   }, [isConnected, address, user]);
 
-  // Load limits + scheduled posts
+  // Load data (posts, limits, etc.)
   useEffect(() => {
     if (user) {
       const fetchData = async () => {
@@ -92,7 +98,6 @@ export default function SchedulerPage() {
         if (u) {
           const lastMonth = new Date(u.last_reset || 0).getMonth();
           const currentMonth = new Date().getMonth();
-
           if (lastMonth !== currentMonth) {
             await supabase
               .from("users")
@@ -127,26 +132,29 @@ export default function SchedulerPage() {
           .from("scheduled_posts")
           .select("*")
           .eq("user_id", user.fid);
+
         setPosts(p || []);
       };
       fetchData();
     }
   }, [user]);
 
-  // --- Thread management ---
+  // Thread controls
   const handleThreadChange = (id, value) => {
     setThread((prev) =>
       prev.map((p) => (p.id === id ? { ...p, content: value } : p))
     );
   };
 
-  const addThreadPost = () =>
+  const addThreadPost = () => {
     setThread([...thread, { id: Date.now(), content: "" }]);
+  };
 
-  const deleteThreadPost = (id) =>
+  const deleteThreadPost = (id) => {
     setThread((prev) => prev.filter((p) => p.id !== id));
+  };
 
-  // --- Schedule post ---
+  // Schedule post
   const handleSchedule = async () => {
     if (!user) return alert("Connect Wallet first.");
     if (!datetime) return alert("Select date/time.");
@@ -167,7 +175,7 @@ export default function SchedulerPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            api_key: process.env.NEXT_PUBLIC_NEYNAR_API_KEY,
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_NEYNAR_API_KEY}`,
             "x-neynar-experimental": "true",
           },
           body: JSON.stringify({
@@ -177,25 +185,27 @@ export default function SchedulerPage() {
           }),
         }
       );
+
       if (!response.ok) throw new Error(await response.text());
       const data = await response.json();
-
       const castId = data.hash;
 
-      await supabase.from("scheduled_posts").insert({
+      const { error } = await supabase.from("scheduled_posts").insert({
         user_id: user.fid,
         posts: validPosts.map((p) => p.content),
         datetime: new Date(datetime).toISOString(),
         cast_id: castId,
       });
 
-      // Example batch tx: Approve & register
+      if (error) throw error;
+
+      // Example onchain call
       sendCalls({
         calls: [
           {
             to: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // Base USDC
             data: encodeFunctionData({
-              abi: contractABI, // ERC20 ABI needed for approve
+              abi: contractABI,
               functionName: "approve",
               args: [
                 process.env.NEXT_PUBLIC_CONTRACT_ADDRESS,
@@ -237,6 +247,7 @@ export default function SchedulerPage() {
     }
   };
 
+  // Remove post
   const removePost = async (id) => {
     if (window.confirm("Delete scheduled post?")) {
       const { error } = await supabase
@@ -247,6 +258,7 @@ export default function SchedulerPage() {
     }
   };
 
+  // Post immediately
   const handlePostNow = async (id) => {
     const entry = posts.find((p) => p.id === id);
     if (entry) {
@@ -257,7 +269,7 @@ export default function SchedulerPage() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              api_key: process.env.NEXT_PUBLIC_NEYNAR_API_KEY,
+              Authorization: `Bearer ${process.env.NEXT_PUBLIC_NEYNAR_API_KEY}`,
               "x-neynar-experimental": "true",
             },
             body: JSON.stringify({
@@ -266,6 +278,7 @@ export default function SchedulerPage() {
             }),
           }
         );
+
         if (!response.ok) throw new Error(await response.text());
         alert("Posted now!");
         removePost(id);
@@ -275,7 +288,6 @@ export default function SchedulerPage() {
     }
   };
 
-  // --- UI ---
   return (
     <div className="card">
       <h2 className="mb-3">Post Scheduler</h2>
@@ -301,9 +313,7 @@ export default function SchedulerPage() {
                 className="input"
                 placeholder={`Post ${idx + 1}`}
                 value={p.content}
-                onChange={(e) =>
-                  handleThreadChange(p.id, e.target.value)
-                }
+                onChange={(e) => handleThreadChange(p.id, e.target.value)}
                 disabled={!isUnlimited && monthlyUsed >= limit}
                 style={{
                   minHeight: "100px",
