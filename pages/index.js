@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { ethers } from "ethers";
+import { useAccount, useConnect, useDisconnect, useSendCalls } from 'wagmi';
+import { encodeFunctionData, parseUnits } from 'viem';
 import { supabase } from "../lib/supabase";
 import contractABI from "../utils/contractABI.json"; // Get from Remix
 
 export default function SchedulerPage() {
-  const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin}
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { sendCalls } = useSendCalls();
+  const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin, username, bio}
   const [posts, setPosts] = useState([]);
   const [thread, setThread] = useState([{ id: Date.now(), content: "" }]);
   const [datetime, setDatetime] = useState("");
@@ -13,7 +18,7 @@ export default function SchedulerPage() {
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
 
-  // Automatically attempt to load user on app open (from localStorage)
+  // Automatically load user from localStorage if previously connected
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -21,13 +26,44 @@ export default function SchedulerPage() {
     }
   }, []);
 
+  // Auto-fetch Farcaster details after wallet connect
+  useEffect(() => {
+    if (isConnected && address && !user) {
+      const fetchFarcasterData = async () => {
+        try {
+          const response = await fetch(`https://api.neynar.com/v1/farcaster/user-by-address?address=${address}`, {
+            headers: { 'api_key': process.env.NEYNAR_API_KEY },
+          });
+          if (!response.ok) throw new Error(await response.text());
+          const data = await response.json();
+          const fid = data.fid;
+          const signer_uuid = data.signer_uuid || '';
+          const is_admin = fid === Number(process.env.ADMIN_FID);
+          // Fetch more info (username, bio)
+          const userRes = await fetch(`https://api.neynar.com/v1/farcaster/user?fid=${fid}`, {
+            headers: { 'api_key': process.env.NEYNAR_API_KEY },
+          });
+          const userData = await userRes.json();
+          const { username, bio } = userData.result.user;
+          const newUser = { fid, wallet: address, signer_uuid, is_admin, username, bio };
+          setUser(newUser);
+          localStorage.setItem('user', JSON.stringify(newUser));
+          await supabase.from('users').upsert(newUser);
+        } catch (error) {
+          console.error("Farcaster fetch error:", error);
+          alert("Failed to connect Farcaster.");
+        }
+      };
+      fetchFarcasterData();
+    }
+  }, [isConnected, address]);
+
   // Load data
   useEffect(() => {
     if (user) {
       const fetchData = async () => {
         const { data: u } = await supabase.from('users').select('*').eq('fid', user.fid).single();
         if (u) {
-          // Monthly reset check
           const lastMonth = new Date(u.last_reset || 0).getMonth();
           const currentMonth = new Date().getMonth();
           if (lastMonth !== currentMonth) {
@@ -90,15 +126,27 @@ export default function SchedulerPage() {
         cast_id: castId
       });
       if (error) throw error;
-      if (window.ethereum) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []); // Connect wallet
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, contractABI, signer);
-        await contract.registerScheduledPost(castId, timestamp, user.wallet);
-      } else {
-        alert("Install Metamask to interact with contract.");
-      }
+      // Example batch: Approve (dummy USDC) and register (customize with real ABI/args)
+      sendCalls({
+        calls: [
+          {
+            to: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base USDC
+            data: encodeFunctionData({
+              abi: contractABI, // Use ERC20 ABI for approve
+              functionName: 'approve',
+              args: [process.env.CONTRACT_ADDRESS, parseUnits('1', 6)], // Approve 1 USDC
+            })
+          },
+          {
+            to: process.env.CONTRACT_ADDRESS,
+            data: encodeFunctionData({
+              abi: contractABI,
+              functionName: 'registerScheduledPost',
+              args: [castId, timestamp, address],
+            })
+          }
+        ]
+      });
       setPosts([...posts, { _id: Date.now(), posts: validPosts.map(p => p.content), datetime, cast_id: castId }]);
       await supabase.from('users').update({ monthly_used: monthlyUsed + 1 }).eq('fid', user.fid);
       setThread([{ id: Date.now(), content: "" }]);
@@ -146,7 +194,7 @@ export default function SchedulerPage() {
       <h2 className="mb-3">Post Scheduler</h2>
 
       {!user ? (
-        <p className="small">Connect Wallet First</p>
+        <button className="btn" onClick={() => connect({ connector: connectors[0] })}>Connect Wallet</button>
       ) : (
         <>
           <div className="tag mb-3">
