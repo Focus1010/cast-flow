@@ -2,19 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useAccount, useConnect, useDisconnect, useWriteContract } from 'wagmi';
 import { supabase } from "../lib/supabase";
 import contractABI from "../utils/contractABI.json"; // Get from Remix
-import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk";
-
-const config = new Configuration({
-  apiKey: process.env.NEYNAR_API_KEY,
-});
-const neynar = new NeynarAPIClient(config);
 
 export default function SchedulerPage() {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
   const { writeContract } = useWriteContract();
-  const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin, username, bio, etc.}
+  const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin}
   const [posts, setPosts] = useState([]);
   const [thread, setThread] = useState([{ id: Date.now(), content: "" }]);
   const [datetime, setDatetime] = useState("");
@@ -23,51 +17,13 @@ export default function SchedulerPage() {
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
 
-  // Automatically load user from localStorage on app open
+  // Automatically attempt to load user on app open (from localStorage)
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
   }, []);
-
-  // After wallet connect, auto-fetch Farcaster details via Neynar
-  useEffect(() => {
-    if (isConnected && address && !user) {
-      const fetchFarcasterData = async () => {
-        try {
-          const response = await fetch(`https://api.neynar.com/v1/farcaster/user-by-address?address=${address}`, {
-            headers: { 'api_key': process.env.NEYNAR_API_KEY },
-          });
-          if (!response.ok) throw new Error(await response.text());
-          const data = await response.json();
-          const fid = data.fid;
-          const signer_uuid = data.signer_uuid || '';
-          const is_admin = fid === Number(process.env.ADMIN_FID);
-          // Fetch more user info (username, bio, etc.)
-          const userRes = await neynar.v1.user(fid);
-          const { username, bio, followers } = userRes.result.user; // Example fields
-          const newUser = { fid, wallet: address, signer_uuid, is_admin, username, bio, followers };
-          setUser(newUser);
-          localStorage.setItem('user', JSON.stringify(newUser));
-          // Upsert to Supabase
-          await supabase.from('users').upsert({
-            fid,
-            wallet: address,
-            signer_uuid,
-            monthly_used: 0,
-            package_type: null,
-            premium_expiry: 0,
-            is_admin
-          });
-        } catch (error) {
-          console.error("Farcaster fetch error:", error);
-          alert("Failed to connect Farcaster. Try again.");
-        }
-      };
-      fetchFarcasterData();
-    }
-  }, [isConnected, address]);
 
   // Load data
   useEffect(() => {
@@ -138,6 +94,7 @@ export default function SchedulerPage() {
         cast_id: castId
       });
       if (error) throw error;
+      if (!isConnected) return alert("Connect wallet first.");
       // Use Wagmi for contract call
       writeContract({
         abi: contractABI,
