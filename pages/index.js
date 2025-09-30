@@ -26,21 +26,22 @@ export default function SchedulerPage() {
     }
   }, []);
 
-  // Auto-fetch Farcaster details after wallet connect
+  // Auto-fetch Farcaster details after wallet connect (fixed endpoint/header)
   useEffect(() => {
     if (isConnected && address && !user) {
       const fetchFarcasterData = async () => {
         try {
-          const response = await fetch(`https://api.neynar.com/v1/farcaster/user-by-address?address=${address}`, {
-            headers: { 'api_key': process.env.NEYNAR_API_KEY },
+          const response = await fetch(`https://api.neynar.com/v2/farcaster/user-by-verification?addresses=${address}&address_types=verified_address`, {
+            headers: { 'api-key': process.env.NEYNAR_API_KEY },
           });
           if (!response.ok) throw new Error(await response.text());
           const data = await response.json();
-          const fid = data.fid;
+          const fid = data.user.fid;
           const signer_uuid = data.signer_uuid || '';
           const is_admin = fid === Number(process.env.ADMIN_FID);
+          // Fetch more info (username, bio)
           const userRes = await fetch(`https://api.neynar.com/v1/farcaster/user?fid=${fid}`, {
-            headers: { 'api_key': process.env.NEYNAR_API_KEY },
+            headers: { 'api-key': process.env.NEYNAR_API_KEY },
           });
           const userData = await userRes.json();
           const { username, bio } = userData.result.user;
@@ -50,7 +51,7 @@ export default function SchedulerPage() {
           await supabase.from('users').upsert(newUser);
         } catch (error) {
           console.error("Farcaster fetch error:", error);
-          alert("Failed to connect Farcaster.");
+          alert("Failed to connect Farcaster. Check console for details and verify your Neynar API key in env.");
         }
       };
       fetchFarcasterData();
@@ -106,7 +107,7 @@ export default function SchedulerPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api_key': process.env.NEYNAR_API_KEY,
+          'api-key': process.env.NEYNAR_API_KEY,
           'x-neynar-experimental': 'true'
         },
         body: JSON.stringify({
@@ -180,7 +181,7 @@ export default function SchedulerPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'api_key': process.env.NEYNAR_API_KEY,
+            'api-key': process.env.NEYNAR_API_KEY,
             'x-neynar-experimental': 'true'
           },
           body: JSON.stringify({
