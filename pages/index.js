@@ -32,16 +32,16 @@ export default function SchedulerPage() {
       const fetchFarcasterData = async () => {
         try {
           const response = await fetch(`https://api.neynar.com/v2/farcaster/user-by-verification?addresses=${address}&address_types=verified_address`, {
-            headers: { 'api-key': process.env.NEYNAR_API_KEY },
+            headers: { 'api-key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
           });
           if (!response.ok) throw new Error(await response.text());
           const data = await response.json();
           const fid = data.user.fid;
           const signer_uuid = data.signer_uuid || '';
-          const is_admin = fid === Number(process.env.ADMIN_FID);
+          const is_admin = fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID);
           // Fetch more info (username, bio)
           const userRes = await fetch(`https://api.neynar.com/v1/farcaster/user?fid=${fid}`, {
-            headers: { 'api-key': process.env.NEYNAR_API_KEY },
+            headers: { 'api-key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
           });
           const userData = await userRes.json();
           const { username, bio } = userData.result.user;
@@ -181,7 +181,7 @@ export default function SchedulerPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'api-key': process.env.NEYNAR_API_KEY,
+            'api-key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY,
             'x-neynar-experimental': 'true'
           },
           body: JSON.stringify({
