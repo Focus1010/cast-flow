@@ -6,8 +6,8 @@ import { supabase } from "../lib/supabase";
 import contractABI from "../utils/contractABI.json"; // Get from Remix
 
 export default function SchedulerPage() {
-  const { login, logout, authenticated, user: privyUser, ready, error } = usePrivy(); // Privy for auto-connect/auth
-  const { address } = useAccount(); // Wagmi for wallet (auto from Privy)
+  const { login, logout, authenticated, user: privyUser, ready, error } = usePrivy(); // Privy for Farcaster auth
+  const { address } = useAccount(); // Wagmi for wallet
   const { sendCalls } = useSendCalls();
   const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin, username, bio}
   const [posts, setPosts] = useState([]);
@@ -19,7 +19,7 @@ export default function SchedulerPage() {
   const [monthlyUsed, setMonthlyUsed] = useState(0);
   const [connectError, setConnectError] = useState(null);
 
-  // Auto-load user from Privy (automatic if logged in)
+  // Auto-load user from Privy (automatic if authenticated)
   useEffect(() => {
     if (ready && authenticated && privyUser) {
       const farcaster = privyUser.farcaster || {};
@@ -33,7 +33,7 @@ export default function SchedulerPage() {
       };
       setUser(newUser);
       localStorage.setItem('user', JSON.stringify(newUser));
-      supabase.from('users').upsert(newUser).catch(console.error);
+      supabase.from('users').upsert(newUser).catch(error => console.error("Supabase upsert error:", error));
     }
   }, [ready, authenticated, privyUser, address]);
 
@@ -94,7 +94,7 @@ export default function SchedulerPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY,
+          'api_key': process.env.NEYNAR_API_KEY,
           'x-neynar-experimental': 'true'
         },
         body: JSON.stringify({
@@ -168,7 +168,7 @@ export default function SchedulerPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY,
+            'api_key': process.env.NEYNAR_API_KEY,
             'x-neynar-experimental': 'true'
           },
           body: JSON.stringify({
