@@ -138,7 +138,7 @@ body {
     display: block;
   }
   .nav-menu {
-    display: none;
+    display: block;
     position: absolute;
     top: 100%;
     right: 20px;
