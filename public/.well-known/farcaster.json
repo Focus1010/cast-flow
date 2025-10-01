@@ -1,13 +1,20 @@
 {
-  "miniapp": {
-    "version": "1",
+  "frame": {
     "name": "Cast Flow",
-    "iconUrl": "https://ibb.co/7J5zdfq2",  
-    "homeUrl": "https://cast-flow-64ad.vercel.app/",  
-    "imageUrl": "https://ibb.co/7J5zdfq2",  
-    "buttonTitle": "🚀 Schedule Casts",
+    "version": "1",
+    "iconUrl": "https://ibb.co/7J5zdfq2",
+    "homeUrl": "https://cast-flow-app.vercel.app",
+    "imageUrl": "https://cast-flow-app.vercel.app/image.png",
     "splashImageUrl": "https://ibb.co/7J5zdfq2",
     "splashBackgroundColor": "#0f172a",
-    "webhookUrl": "https://your-app-domain.com/api/webhook"  
+    "webhookUrl": "https://cast-flow-app.vercel.app/api/webhook",
+    "subtitle": "Schedule a cast for whenever you want it to go live, and reward your followers ",
+    "primaryCategory": "social",
+    "description": "Experience Social growth while building solid connection with your follwers"
+  },
+  "accountAssociation": {
+    "header": "eyJmaWQiOjEwNTE5MDAsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHgzZUE4OTVhODZhRmQxNzAwRjYzNTM2RkEyMWMwMjBCMGEzMjEzM0U5In0",
+    "payload": "eyJkb21haW4iOiJjYXN0LWZsb3ctYXBwLnZlcmNlbC5hcHAifQ",
+    "signature": "MHg1YWJmMGEyMjJiNWIxZDhjN2MzMzJiM2Y2MzU0Y2JjYWJmOGFmZjA5OTAwZjNhY2Q3MjczOWUyODc3ZDI5YWIwMmZlMGE4ZDQyYjdlY2M4ZWNmZDQ1MzM0N2JmNjg2ZmQ4Y2YyMWViYjMzNTM0OTNiZjg2MGZmMmU5YTI0MTFlMjFi"
   }
 }

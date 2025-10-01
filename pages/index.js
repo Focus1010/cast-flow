@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { useAccount, useConnect, useDisconnect, useSendCalls } from 'wagmi';
+import { usePrivy } from '@privy-io/react-auth';
+import { useAccount, useSendCalls } from 'wagmi';
 import { encodeFunctionData, parseUnits } from 'viem';
 import { supabase } from "../lib/supabase";
 import contractABI from "../utils/contractABI.json"; // Get from Remix
 
 export default function SchedulerPage() {
-  const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
+  const { login, logout, authenticated, user: privyUser, ready, error } = usePrivy(); // Privy for Farcaster auth
+  const { address } = useAccount(); // Wagmi for wallet details
   const { sendCalls } = useSendCalls();
   const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin, username, bio}
   const [posts, setPosts] = useState([]);
@@ -17,57 +17,26 @@ export default function SchedulerPage() {
   const [limit, setLimit] = useState(10);
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
-  const [connectError, setConnectError] = useState(null);
 
-  // Auto-load user if previously connected
+  // Auto-load user from Privy (automatic if previously connected)
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    if (ready && authenticated && privyUser) {
+      const { farcaster } = privyUser;
+      if (farcaster) {
+        const newUser = {
+          fid: farcaster.fid,
+          wallet: address || farcaster.linkedAddresses[0] || '',
+          signer_uuid: farcaster.signerUuid || '',
+          is_admin: farcaster.fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID),
+          username: farcaster.username || '',
+          bio: farcaster.bio || '',
+        };
+        setUser(newUser);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        supabase.from('users').upsert(newUser).catch(console.error);
+      }
     }
-  }, []);
-
-  // Auto-fetch Farcaster details after wallet connect, with better error handling
-  useEffect(() => {
-    if (isConnected && address && !user) {
-      const fetchFarcasterData = async () => {
-        try {
-          setConnectError(null);
-          const response = await fetch(`https://api.neynar.com/v1/farcaster/user-by-address?address=${address}`, {
-            headers: { 'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
-          });
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText);
-          }
-          const data = await response.json();
-          const fid = data.fid;
-          const signer_uuid = data.signer_uuid || '';
-          const is_admin = fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID);
-          const userRes = await fetch(`https://api.neynar.com/v1/farcaster/user?fid=${fid}`, {
-            headers: { 'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
-          });
-          if (!userRes.ok) throw new Error(await userRes.text());
-          const userData = await userRes.json();
-          const { username, bio } = userData.result.user;
-          const newUser = { fid, wallet: address, signer_uuid, is_admin, username, bio };
-          setUser(newUser);
-          localStorage.setItem('user', JSON.stringify(newUser));
-          await supabase.from('users').upsert(newUser);
-        } catch (error) {
-          console.error("Farcaster fetch error:", error);
-          let errorMsg = "Failed to connect Farcaster. Check console for details and verify your Neynar API key in env.";
-          if (error.message.includes("not found") || error.message.includes("404")) {
-            errorMsg = "Wallet not linked to Farcaster account. Please link your wallet in Warpcast settings and try again.";
-          } else if (error.message.includes("invalid") || error.message.includes("401")) {
-            errorMsg = "Invalid Neynar API key. Please check your NEXT_PUBLIC_NEYNAR_API_KEY in .env.local and ensure it's valid.";
-          }
-          setConnectError(errorMsg);
-        }
-      };
-      fetchFarcasterData();
-    }
-  }, [isConnected, address]);
+  }, [ready, authenticated, privyUser, address]);
 
   // Load data
   useEffect(() => {
@@ -200,7 +169,7 @@ export default function SchedulerPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY,
+            'api_key': process.env.NEXNEYNAR_API_KEY,
             'x-neynar-experimental': 'true'
           },
           body: JSON.stringify({
@@ -222,10 +191,7 @@ export default function SchedulerPage() {
       <h2 className="mb-3">Post Scheduler</h2>
 
       {!user ? (
-        <div>
-          <button className="btn" onClick={() => connect({ connector: connectors[0] })}>Connect Wallet</button>
-          {connectError && <p className="small" style={{ color: "red" }}>{connectError}</p>}
-        </div>
+        <button className="btn" onClick={() => connect({ connector: connectors[0] })}>Connect Wallet</button>
       ) : (
         <>
           <div className="tag mb-3">
