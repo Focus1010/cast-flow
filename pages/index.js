@@ -17,6 +17,7 @@ export default function SchedulerPage() {
   const [limit, setLimit] = useState(10);
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
+  const [connectError, setConnectError] = useState(null);
 
   // Auto-load user if previously connected
   useEffect(() => {
@@ -26,23 +27,27 @@ export default function SchedulerPage() {
     }
   }, []);
 
-  // Auto-fetch Farcaster details after wallet connect (fixed endpoint/header)
+  // Auto-fetch Farcaster details after wallet connect, with better error handling
   useEffect(() => {
     if (isConnected && address && !user) {
       const fetchFarcasterData = async () => {
         try {
-          const response = await fetch(`https://api.neynar.com/v2/farcaster/user-by-verification?addresses=${address}&address_types=verified_address`, {
-            headers: { 'api-key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
+          setConnectError(null);
+          const response = await fetch(`https://api.neynar.com/v1/farcaster/user-by-address?address=${address}`, {
+            headers: { 'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
           });
-          if (!response.ok) throw new Error(await response.text());
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText);
+          }
           const data = await response.json();
-          const fid = data.user.fid;
+          const fid = data.fid;
           const signer_uuid = data.signer_uuid || '';
           const is_admin = fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID);
-          // Fetch more info (username, bio)
           const userRes = await fetch(`https://api.neynar.com/v1/farcaster/user?fid=${fid}`, {
-            headers: { 'api-key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
+            headers: { 'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY },
           });
+          if (!userRes.ok) throw new Error(await userRes.text());
           const userData = await userRes.json();
           const { username, bio } = userData.result.user;
           const newUser = { fid, wallet: address, signer_uuid, is_admin, username, bio };
@@ -51,7 +56,13 @@ export default function SchedulerPage() {
           await supabase.from('users').upsert(newUser);
         } catch (error) {
           console.error("Farcaster fetch error:", error);
-          alert("Failed to connect Farcaster. Check console for details and verify your Neynar API key in env.");
+          let errorMsg = "Failed to connect Farcaster. Check console for details and verify your Neynar API key in env.";
+          if (error.message.includes("not found") || error.message.includes("404")) {
+            errorMsg = "Wallet not linked to Farcaster account. Please link your wallet in Warpcast settings and try again.";
+          } else if (error.message.includes("invalid") || error.message.includes("401")) {
+            errorMsg = "Invalid Neynar API key. Please check your NEXT_PUBLIC_NEYNAR_API_KEY in .env.local and ensure it's valid.";
+          }
+          setConnectError(errorMsg);
         }
       };
       fetchFarcasterData();
@@ -62,22 +73,30 @@ export default function SchedulerPage() {
   useEffect(() => {
     if (user) {
       const fetchData = async () => {
-        const { data: u } = await supabase.from('users').select('*').eq('fid', user.fid).single();
-        if (u) {
-          const lastMonth = new Date(u.last_reset || 0).getMonth();
-          const currentMonth = new Date().getMonth();
-          if (lastMonth !== currentMonth) {
-            await supabase.from('users').update({ monthly_used: 0, last_reset: new Date().toISOString() }).eq('fid', user.fid);
-            setMonthlyUsed(0);
-          } else {
-            setMonthlyUsed(u.monthly_used || 0);
+        try {
+          const { data: u, error: uError } = await supabase.from('users').select('*').eq('fid', user.fid).single();
+          if (uError) throw uError;
+          if (u) {
+            const lastMonth = new Date(u.last_reset || 0).getMonth();
+            const currentMonth = new Date().getMonth();
+            if (lastMonth !== currentMonth) {
+              const { error: updateError } = await supabase.from('users').update({ monthly_used: 0, last_reset: new Date().toISOString() }).eq('fid', user.fid);
+              if (updateError) throw updateError;
+              setMonthlyUsed(0);
+            } else {
+              setMonthlyUsed(u.monthly_used || 0);
+            }
+            setPackageInfo(u.package_type);
+            setIsUnlimited(u.is_admin || u.package_type === "Unlimited");
+            setLimit(u.is_admin ? Infinity : u.package_type === "Starter" ? 15 : u.package_type === "Pro" ? 30 : u.package_type === "Elite" ? 60 : 10);
           }
-          setPackageInfo(u.package_type);
-          setIsUnlimited(u.is_admin || u.package_type === "Unlimited");
-          setLimit(u.is_admin ? Infinity : u.package_type === "Starter" ? 15 : u.package_type === "Pro" ? 30 : u.package_type === "Elite" ? 60 : 10);
+          const { data: p, error: pError } = await supabase.from('scheduled_posts').select('*').eq('user_id', user.fid);
+          if (pError) throw pError;
+          setPosts(p || []);
+        } catch (error) {
+          console.error("Data fetch error:", error);
+          alert("Failed to load data: " + error.message);
         }
-        const { data: p } = await supabase.from('scheduled_posts').select('*').eq('user_id', user.fid);
-        setPosts(p || []);
       };
       fetchData();
     }
@@ -107,7 +126,7 @@ export default function SchedulerPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'api-key': process.env.NEYNAR_API_KEY,
+          'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY,
           'x-neynar-experimental': 'true'
         },
         body: JSON.stringify({
@@ -181,7 +200,7 @@ export default function SchedulerPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'api-key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY,
+            'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY,
             'x-neynar-experimental': 'true'
           },
           body: JSON.stringify({
@@ -203,7 +222,10 @@ export default function SchedulerPage() {
       <h2 className="mb-3">Post Scheduler</h2>
 
       {!user ? (
-        <button className="btn" onClick={() => connect({ connector: connectors[0] })}>Connect Wallet</button>
+        <div>
+          <button className="btn" onClick={() => connect({ connector: connectors[0] })}>Connect Wallet</button>
+          {connectError && <p className="small" style={{ color: "red" }}>{connectError}</p>}
+        </div>
       ) : (
         <>
           <div className="tag mb-3">
