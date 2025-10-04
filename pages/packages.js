@@ -15,7 +15,16 @@ export default function PackagesPage() {
 
   const handleBuy = async (pkg) => {
     if (!user) return alert("Sign in first.");
-    if (!window.ethereum) return alert("Please connect your wallet first.");
+    
+    // Try to connect wallet if not connected
+    if (!window.ethereum) {
+      try {
+        // Request wallet connection
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+      } catch (error) {
+        return alert("Please install MetaMask or connect your wallet first.");
+      }
+    }
     
     setStatus("Processing purchase...");
     

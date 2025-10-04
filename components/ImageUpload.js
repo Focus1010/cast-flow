@@ -5,6 +5,9 @@ export default function ImageUpload({ onImagesChange, maxImages = 4, userId }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Debug log to check if component is rendering
+  console.log('ImageUpload component rendered with userId:', userId);
+
   const handleFileSelect = async (event) => {
     const files = Array.from(event.target.files);
     

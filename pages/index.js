@@ -49,8 +49,29 @@ export default function SchedulerPage() {
     if (user) {
       const fetchData = async () => {
         try {
-          const { data: u, error: uError } = await supabase.from('users').select('*').eq('fid', user.fid).single();
-          if (uError) throw uError;
+          // First try to find user by fid, if not found create new user
+          let { data: u, error: uError } = await supabase.from('users').select('*').eq('fid', user.fid).single();
+          
+          if (uError && uError.code === 'PGRST116') {
+            // User doesn't exist, create new user
+            const { data: newUser, error: createError } = await supabase
+              .from('users')
+              .insert({
+                fid: user.fid,
+                username: user.username || '',
+                bio: user.bio || '',
+                wallet_address: user.wallet || '',
+                monthly_used: 0,
+                is_admin: false
+              })
+              .select()
+              .single();
+            
+            if (createError) throw createError;
+            u = newUser;
+          } else if (uError) {
+            throw uError;
+          }
           if (u) {
             const lastMonth = new Date(u.last_reset || 0).getMonth();
             const currentMonth = new Date().getMonth();
@@ -228,7 +249,7 @@ export default function SchedulerPage() {
             <ImageUpload 
               onImagesChange={setImages}
               maxImages={4}
-              userId={user.fid}
+              userId={user?.fid}
             />
           </div>
 

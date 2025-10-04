@@ -27,21 +27,34 @@ export default function ProfilePage() {
       setError('');
       
       try {
-        // Fetch from Supabase (upsert to create if doesn't exist)
-        const { data: u, error: uError } = await supabase
+        // First try to find user by fid
+        let { data: u, error: uError } = await supabase
           .from('users')
-          .upsert({ 
-            fid: user.fid,
-            username: user.username || '',
-            wallet_address: user.wallet || '',
-            monthly_used: 0,
-            premium_expiry: 0
-          }, { 
-            onConflict: 'fid',
-            ignoreDuplicates: false 
-          })
-          .select()
+          .select('*')
+          .eq('fid', user.fid)
           .single();
+
+        if (uError && uError.code === 'PGRST116') {
+          // User doesn't exist, create new user
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert({
+              fid: user.fid,
+              username: user.username || '',
+              bio: user.bio || '',
+              wallet_address: user.wallet || '',
+              monthly_used: 0,
+              premium_expiry: 0,
+              is_admin: false
+            })
+            .select()
+            .single();
+          
+          if (createError) throw createError;
+          u = newUser;
+        } else if (uError) {
+          throw uError;
+        }
 
         if (uError && uError.code !== 'PGRST116') {
           console.error('Supabase error:', uError);
