@@ -86,18 +86,85 @@ export default function TipsPage() {
           </div>
 
           <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
-              Actions
+            <label style={{ display: "block", marginBottom: 12, fontWeight: 600 }}>
+              Actions (Select which actions trigger tips)
             </label>
-            <div className="kv">
-              <label>
-                <input type="checkbox" checked={actions.like} onChange={() => setActions({ ...actions, like: !actions.like })} /> Likes
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "1fr 1fr 1fr", 
+              gap: "16px",
+              padding: "16px",
+              backgroundColor: "rgba(124, 58, 237, 0.1)",
+              borderRadius: "8px"
+            }}>
+              <label style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "8px", 
+                cursor: "pointer",
+                padding: "12px",
+                backgroundColor: actions.like ? "rgba(124, 58, 237, 0.2)" : "transparent",
+                borderRadius: "6px",
+                border: actions.like ? "2px solid #7c3aed" : "2px solid transparent",
+                transition: "all 0.2s ease"
+              }}>
+                <input 
+                  type="checkbox" 
+                  checked={actions.like} 
+                  onChange={() => setActions({ ...actions, like: !actions.like })}
+                  style={{ 
+                    width: "20px", 
+                    height: "20px", 
+                    accentColor: "#7c3aed" 
+                  }}
+                />
+                <span style={{ fontWeight: 500 }}>❤️ Likes</span>
               </label>
-              <label>
-                <input type="checkbox" checked={actions.repost} onChange={() => setActions({ ...actions, repost: !actions.repost })} /> Reposts
+              <label style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "8px", 
+                cursor: "pointer",
+                padding: "12px",
+                backgroundColor: actions.repost ? "rgba(124, 58, 237, 0.2)" : "transparent",
+                borderRadius: "6px",
+                border: actions.repost ? "2px solid #7c3aed" : "2px solid transparent",
+                transition: "all 0.2s ease"
+              }}>
+                <input 
+                  type="checkbox" 
+                  checked={actions.repost} 
+                  onChange={() => setActions({ ...actions, repost: !actions.repost })}
+                  style={{ 
+                    width: "20px", 
+                    height: "20px", 
+                    accentColor: "#7c3aed" 
+                  }}
+                />
+                <span style={{ fontWeight: 500 }}>🔄 Reposts</span>
               </label>
-              <label>
-                <input type="checkbox" checked={actions.comment} onChange={() => setActions({ ...actions, comment: !actions.comment })} /> Comments
+              <label style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "8px", 
+                cursor: "pointer",
+                padding: "12px",
+                backgroundColor: actions.comment ? "rgba(124, 58, 237, 0.2)" : "transparent",
+                borderRadius: "6px",
+                border: actions.comment ? "2px solid #7c3aed" : "2px solid transparent",
+                transition: "all 0.2s ease"
+              }}>
+                <input 
+                  type="checkbox" 
+                  checked={actions.comment} 
+                  onChange={() => setActions({ ...actions, comment: !actions.comment })}
+                  style={{ 
+                    width: "20px", 
+                    height: "20px", 
+                    accentColor: "#7c3aed" 
+                  }}
+                />
+                <span style={{ fontWeight: 500 }}>💬 Comments</span>
               </label>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createConfig, http } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
+import { OnchainKitProvider } from '@coinbase/onchainkit';
 import { AuthProvider } from '../contexts/AuthContext';
 
 const queryClient = new QueryClient();
@@ -21,7 +22,7 @@ function MyApp({ Component, pageProps }) {
     <PrivyProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID}
       config={{
-        loginMethods: ['farcaster'],
+        loginMethods: ['farcaster', 'wallet'],
         appearance: {
           theme: 'dark',
           accentColor: '#7c3aed',
@@ -31,15 +32,33 @@ function MyApp({ Component, pageProps }) {
           createOnLogin: 'users-without-wallets',
           requireUserPasswordOnCreate: false,
         },
+        farcaster: {
+          // Use push notifications instead of QR code for mobile
+          loginMethod: 'redirect',
+        },
+        mfa: {
+          noPromptOnMfaRequired: false,
+        },
       }}
     >
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <Layout>
-              <Component {...pageProps} />
-            </Layout>
-          </AuthProvider>
+          <OnchainKitProvider
+            apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
+            chain={base}
+            config={{
+              appearance: {
+                mode: 'dark',
+                theme: 'base',
+              },
+            }}
+          >
+            <AuthProvider>
+              <Layout>
+                <Component {...pageProps} />
+              </Layout>
+            </AuthProvider>
+          </OnchainKitProvider>
         </QueryClientProvider>
       </WagmiProvider>
     </PrivyProvider>

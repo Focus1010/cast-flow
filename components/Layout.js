@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import WalletConnect from './WalletConnect';
 
 export default function Layout({ children }) {
   const { login, logout, authenticated, user } = useAuth();
@@ -28,9 +29,15 @@ export default function Layout({ children }) {
             <Link href="/packages" onClick={handleNavClick}>Buy Package</Link>
             <Link href="/profile" onClick={handleNavClick}>Profile</Link>
             {!authenticated ? (
-              <button className="btn" onClick={login}>Connect Wallet</button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button className="btn" onClick={login}>Farcaster Login</button>
+                <WalletConnect />
+              </div>
             ) : (
-              <button className="btn-ghost" onClick={logout}>Disconnect</button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <WalletConnect />
+                <button className="btn-ghost" onClick={logout}>Disconnect</button>
+              </div>
             )}
           </nav>
 

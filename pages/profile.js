@@ -23,45 +23,76 @@ export default function ProfilePage() {
         return;
       }
       
+      setLoading(true);
+      setError('');
+      
       try {
-
-        // Fetch from Supabase
+        // Fetch from Supabase (upsert to create if doesn't exist)
         const { data: u, error: uError } = await supabase
           .from('users')
-          .select('*')
-          .eq('fid', user.fid)
+          .upsert({ 
+            fid: user.fid,
+            username: user.username || '',
+            wallet_address: user.wallet || '',
+            monthly_used: 0,
+            premium_expiry: 0
+          }, { 
+            onConflict: 'fid',
+            ignoreDuplicates: false 
+          })
+          .select()
           .single();
-        if (uError) throw uError;
 
-        if (u) {
-          setCastsUsed(u.monthly_used || 0);
-          setPremiumExpiry(u.premium_expiry || 0);
+        if (uError && uError.code !== 'PGRST116') {
+          console.error('Supabase error:', uError);
         }
 
-        // Fetch tips from contract (simplified; add error handling)
-        if (window.ethereum) {
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          const signer = provider.getSigner();
-          const contract = new ethers.Contract(contractAddress, contractABI, signer);
-          // Fetch tips logic (your existing code, with try-catch)
-          // ... (add your tip fetching here)
-        } else {
-          setError('Connect wallet for full profile.');
+        // Set user data from either existing or newly created record
+        const userData = u || {
+          monthly_used: 0,
+          premium_expiry: 0
+        };
+        
+        setCastsUsed(userData.monthly_used || 0);
+        setPremiumExpiry(userData.premium_expiry || 0);
+
+        // Fetch tips from contract if wallet is connected
+        if (window.ethereum && contractAddress && contractAddress !== 'undefined') {
+          try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const contract = new ethers.Contract(contractAddress, contractABI, signer);
+            
+            // Fetch user's tip balances (implement based on your contract)
+            const userAddress = await signer.getAddress();
+            // Example: const tipBalance = await contract.getTipBalance(userAddress);
+            // setTips({ ETH: tipBalance.eth, USDC: tipBalance.usdc, ... });
+            
+          } catch (contractError) {
+            console.error('Contract interaction error:', contractError);
+            // Don't set error for contract issues, just log them
+          }
         }
+        
       } catch (err) {
+        console.error('Profile load error:', err);
         setError('Failed to load profile: ' + err.message);
+      } finally {
+        setLoading(false);
       }
     };
     
     if (authenticated && user) {
       loadUserData();
+    } else {
+      setLoading(false);
     }
   }, [user, authenticated]);
 
-  const getContract = () => {
+  const getContract = async () => {
     if (!window.ethereum) return null;
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const signer = provider.getSigner();
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
     return new ethers.Contract(contractAddress, contractABI, signer);
   };
 
@@ -87,13 +118,37 @@ export default function ProfilePage() {
   return (
     <div className="card">
       <h2 className="mb-3">Profile</h2>
-      <div style={{ marginBottom: "16px" }}>
-        <label className="small">Farcaster ID (FID)</label>
-        <input className="input" type="text" value={user?.fid || ''} readOnly />
-      </div>
-      <div style={{ marginBottom: "16px" }}>
-        <label className="small">Wallet Address</label>
-        <input className="input" type="text" value={user?.wallet || ''} readOnly />
+      
+      {/* User Info Section */}
+      <div style={{ marginBottom: "24px", padding: "16px", backgroundColor: "rgba(124, 58, 237, 0.1)", borderRadius: "8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px" }}>
+          {user?.username && (
+            <img 
+              src={`https://res.cloudinary.com/merkle-manufactory/image/fetch/c_fill,f_png,w_144/${encodeURIComponent(`https://warpcast.com/~/channel-images/${user.username}.png`)}`}
+              alt="Profile"
+              style={{ width: "64px", height: "64px", borderRadius: "50%", objectFit: "cover" }}
+              onError={(e) => {
+                e.target.src = `https://api.dicebear.com/7.x/identicon/svg?seed=${user.fid}`;
+              }}
+            />
+          )}
+          <div>
+            <h3 style={{ margin: 0, color: "#7c3aed" }}>@{user?.username || 'Anonymous'}</h3>
+            <p style={{ margin: "4px 0", fontSize: "14px", opacity: 0.8 }}>FID: {user?.fid}</p>
+            {user?.bio && <p style={{ margin: "4px 0", fontSize: "14px", fontStyle: "italic" }}>{user.bio}</p>}
+          </div>
+        </div>
+        
+        <div style={{ marginBottom: "12px" }}>
+          <label className="small">Wallet Address</label>
+          <input 
+            className="input" 
+            type="text" 
+            value={user?.wallet || 'Not connected'} 
+            readOnly 
+            style={{ fontSize: "12px", fontFamily: "monospace" }}
+          />
+        </div>
       </div>
       <div style={{ marginBottom: "16px" }}>
         <h3 className="mb-2">Usage</h3>

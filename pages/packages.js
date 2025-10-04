@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { ethers } from "ethers";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import contractABI from "../utils/contractABI.json";
 
 export default function PackagesPage() {
   const { user, authenticated, login } = useAuth();
@@ -13,17 +15,62 @@ export default function PackagesPage() {
 
   const handleBuy = async (pkg) => {
     if (!user) return alert("Sign in first.");
+    if (!window.ethereum) return alert("Please connect your wallet first.");
+    
+    setStatus("Processing purchase...");
+    
     try {
-      const provider = new ethers.JsonRpcProvider("YOUR_BASE_RPC_URL");
-      const wallet = new ethers.Wallet("PRIVATE_KEY", provider); // In frontend, use window.ethereum
-      const contract = new ethers.Contract(contractAddress, contractABI, wallet);
-      const usdc = new ethers.Contract("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", ["function approve(address,uint256)"], wallet);
-      await usdc.approve(contractAddress, ethers.utils.parseUnits(pkg.price.toString(), 6)); // USDC 6 decimals
-      await contract.buyPackage(pkg.name, ethers.utils.parseUnits(pkg.price.toString(), 6));
-      await supabase.from('users').update({ package_type: pkg.name, premium_expiry: Math.floor(Date.now() / 1000) + 30*24*3600 }).eq('fid', user.fid);
-      setStatus("Package bought!");
+      // Connect to user's wallet
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      
+      // Contract addresses (update these with your actual addresses)
+      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x...";
+      const usdcAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base USDC
+      
+      // Create contract instances
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      const usdcContract = new ethers.Contract(
+        usdcAddress, 
+        ["function approve(address,uint256) external returns (bool)", "function balanceOf(address) external view returns (uint256)"], 
+        signer
+      );
+      
+      // Check USDC balance
+      const balance = await usdcContract.balanceOf(await signer.getAddress());
+      const requiredAmount = ethers.parseUnits(pkg.price.toString(), 6);
+      
+      if (balance < requiredAmount) {
+        setStatus(`Insufficient USDC balance. Need ${pkg.price} USDC.`);
+        return;
+      }
+      
+      // Approve USDC spending
+      setStatus("Approving USDC...");
+      const approveTx = await usdcContract.approve(contractAddress, requiredAmount);
+      await approveTx.wait();
+      
+      // Buy package
+      setStatus("Purchasing package...");
+      const buyTx = await contract.buyPackage(pkg.name, requiredAmount);
+      await buyTx.wait();
+      
+      // Update user data in Supabase
+      const { error: dbError } = await supabase
+        .from('users')
+        .upsert({ 
+          fid: user.fid,
+          package_type: pkg.name, 
+          premium_expiry: Math.floor(Date.now() / 1000) + 30*24*3600,
+          wallet_address: await signer.getAddress()
+        });
+      
+      if (dbError) console.error("Database update error:", dbError);
+      
+      setStatus(`✅ ${pkg.name} package purchased successfully!`);
     } catch (error) {
-      setStatus("Buy failed: " + error.message);
+      console.error("Purchase error:", error);
+      setStatus("Buy failed: " + (error.reason || error.message));
     }
   };
 
