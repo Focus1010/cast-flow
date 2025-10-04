@@ -14,24 +14,13 @@ export default function PackagesPage() {
   ]);
 
   const handleBuy = async (pkg) => {
-    if (!user) return alert("Sign in first.");
-    
-    // For Farcaster mini app, use embedded wallet from Privy
-    if (!authenticated) {
+    if (!authenticated || !user) {
       return alert("Please connect your Farcaster account first.");
     }
     
-    // Check if we have embedded wallet or external wallet
-    let provider;
-    try {
-      if (window.ethereum) {
-        provider = new ethers.BrowserProvider(window.ethereum);
-      } else {
-        // Use Privy embedded wallet
-        return alert("Wallet connection required. Please connect via Privy.");
-      }
-    } catch (error) {
-      return alert("Failed to connect wallet: " + error.message);
+    // Check if we have wallet connection
+    if (!window.ethereum) {
+      return alert("Please connect your wallet first. Make sure you have a Web3 wallet installed.");
     }
     
     setStatus("Processing purchase...");

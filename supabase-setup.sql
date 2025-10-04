@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   premium_expiry BIGINT,
   package_type TEXT,
   is_admin BOOLEAN DEFAULT FALSE,
+  last_reset TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -16,16 +17,16 @@ CREATE TABLE IF NOT EXISTS public.users (
 -- Create scheduled_posts table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.scheduled_posts (
   id SERIAL PRIMARY KEY,
-  user_fid INTEGER NOT NULL,
-  content TEXT NOT NULL,
-  image_url TEXT,
-  scheduled_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  user_id INTEGER NOT NULL,
+  posts TEXT[],
+  datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+  images TEXT[],
   status TEXT DEFAULT 'scheduled',
   cast_hash TEXT,
   error_message TEXT,
   posted_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  FOREIGN KEY (user_fid) REFERENCES users(fid)
+  FOREIGN KEY (user_id) REFERENCES users(fid)
 );
 
 -- Create thread_posts table if it doesn't exist
