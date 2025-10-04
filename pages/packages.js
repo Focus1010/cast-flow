@@ -16,14 +16,22 @@ export default function PackagesPage() {
   const handleBuy = async (pkg) => {
     if (!user) return alert("Sign in first.");
     
-    // Try to connect wallet if not connected
-    if (!window.ethereum) {
-      try {
-        // Request wallet connection
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-      } catch (error) {
-        return alert("Please install MetaMask or connect your wallet first.");
+    // For Farcaster mini app, use embedded wallet from Privy
+    if (!authenticated) {
+      return alert("Please connect your Farcaster account first.");
+    }
+    
+    // Check if we have embedded wallet or external wallet
+    let provider;
+    try {
+      if (window.ethereum) {
+        provider = new ethers.BrowserProvider(window.ethereum);
+      } else {
+        // Use Privy embedded wallet
+        return alert("Wallet connection required. Please connect via Privy.");
       }
+    } catch (error) {
+      return alert("Failed to connect wallet: " + error.message);
     }
     
     setStatus("Processing purchase...");
@@ -33,9 +41,16 @@ export default function PackagesPage() {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       
-      // Contract addresses (update these with your actual addresses)
-      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x...";
+      // Contract addresses for Base network
+      const contractAddress = process.env.NEXT_PUBLIC_TIPPING_CONTRACT_ADDRESS || "0x1234567890123456789012345678901234567890"; // Deploy the new contract
       const usdcAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base USDC
+      
+      // Contract ABI for the new tipping contract
+      const contractABI = [
+        "function purchasePackage(uint256 packageId) external",
+        "function getPackage(uint256 packageId) external view returns (tuple(string name, uint256 priceUSDC, uint256 postLimit, bool isActive))",
+        "function packageCount() external view returns (uint256)"
+      ];
       
       // Create contract instances
       const contract = new ethers.Contract(contractAddress, contractABI, signer);

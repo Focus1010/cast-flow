@@ -29,8 +29,7 @@ jobs:
         echo "Calling: ${{ secrets.VERCEL_URL }}/api/manual-process-posts"
         
         response=$(curl -s -w "%{http_code}" -X POST "${{ secrets.VERCEL_URL }}/api/manual-process-posts" \
-          -H "Content-Type: application/json" \
-          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          -H "Content-Type: application/json")
         
         http_code="${response: -3}"
         body="${response%???}"

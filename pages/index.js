@@ -48,10 +48,14 @@ export default function SchedulerPage() {
     if (user) {
       const fetchData = async () => {
         try {
-          // First try to find user by fid, if not found create new user
-          let { data: u, error: uError } = await supabase.from('users').select('*').eq('fid', user.fid).single();
+          // First try to find user by fid with better error handling
+          let { data: u, error: uError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('fid', user.fid)
+            .maybeSingle(); // Use maybeSingle to avoid errors when no rows found
           
-          if (uError && uError.code === 'PGRST116') {
+          if (!u) {
             // User doesn't exist, create new user
             const { data: newUser, error: createError } = await supabase
               .from('users')
@@ -61,14 +65,19 @@ export default function SchedulerPage() {
                 bio: user.bio || '',
                 wallet_address: user.wallet || '',
                 monthly_used: 0,
-                is_admin: false
+                is_admin: false,
+                last_reset: new Date().toISOString()
               })
               .select()
               .single();
             
-            if (createError) throw createError;
+            if (createError) {
+              console.error('Create user error:', createError);
+              throw createError;
+            }
             u = newUser;
           } else if (uError) {
+            console.error('User lookup error:', uError);
             throw uError;
           }
           if (u) {

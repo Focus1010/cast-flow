@@ -27,14 +27,14 @@ export default function ProfilePage() {
       setError('');
       
       try {
-        // First try to find user by fid
+        // First try to find user by fid with better error handling
         let { data: u, error: uError } = await supabase
           .from('users')
           .select('*')
           .eq('fid', user.fid)
-          .single();
+          .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no rows
 
-        if (uError && uError.code === 'PGRST116') {
+        if (!u) {
           // User doesn't exist, create new user
           const { data: newUser, error: createError } = await supabase
             .from('users')
@@ -44,15 +44,19 @@ export default function ProfilePage() {
               bio: user.bio || '',
               wallet_address: user.wallet || '',
               monthly_used: 0,
-              premium_expiry: 0,
+              premium_expiry: null,
               is_admin: false
             })
             .select()
             .single();
           
-          if (createError) throw createError;
+          if (createError) {
+            console.error('Create user error:', createError);
+            throw createError;
+          }
           u = newUser;
         } else if (uError) {
+          console.error('User lookup error:', uError);
           throw uError;
         }
 
