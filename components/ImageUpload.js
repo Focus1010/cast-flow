@@ -16,6 +16,11 @@ export default function ImageUpload({ onImagesChange, maxImages = 4, userId }) {
       return;
     }
 
+    if (!userId) {
+      alert('Please sign in first to upload images');
+      return;
+    }
+
     setUploading(true);
     const newImages = [];
 

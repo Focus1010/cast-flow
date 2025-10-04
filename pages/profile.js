@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { ethers } from "ethers";
-import { supabase } from "../lib/supabase";
-import contractABI from "../utils/contractABI.json";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
+import { ethers } from 'ethers';
+import { TIPPING_CONTRACT_ABI, ERC20_ABI, CONTRACT_ADDRESSES, CONTRACT_HELPERS } from '../utils/contractABI';
 
 const contractAddress = process.env.CONTRACT_ADDRESS;
 
 export default function ProfilePage() {
   const { user, authenticated, login } = useAuth();
-  const [tips, setTips] = useState({ ETH: 0, USDC: 0, ENB: 0, FCS: 0 });
   const [claimableTips, setClaimableTips] = useState([]);
   const [claiming, setClaiming] = useState({ ETH: false, USDC: false, ENB: false, FCS: false });
   const [castsUsed, setCastsUsed] = useState(0);
@@ -73,23 +72,8 @@ export default function ProfilePage() {
         setCastsUsed(userData.monthly_used || 0);
         setPremiumExpiry(userData.premium_expiry || 0);
 
-        // Fetch tips from contract if wallet is connected
-        if (window.ethereum && contractAddress && contractAddress !== 'undefined') {
-          try {
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            const signer = await provider.getSigner();
-            const contract = new ethers.Contract(contractAddress, contractABI, signer);
-            
-            // Fetch user's tip balances (implement based on your contract)
-            const userAddress = await signer.getAddress();
-            // Example: const tipBalance = await contract.getTipBalance(userAddress);
-            // setTips({ ETH: tipBalance.eth, USDC: tipBalance.usdc, ... });
-            
-          } catch (contractError) {
-            console.error('Contract interaction error:', contractError);
-            // Don't set error for contract issues, just log them
-          }
-        }
+        // Load claimable tips from new contract
+        await loadClaimableTips();
         
       } catch (err) {
         console.error('Profile load error:', err);
@@ -106,16 +90,99 @@ export default function ProfilePage() {
     }
   }, [user, authenticated]);
 
-  const getContract = async () => {
-    if (!window.ethereum) return null;
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer = await provider.getSigner();
-    return new ethers.Contract(contractAddress, contractABI, signer);
+  const loadClaimableTips = async () => {
+    try {
+      if (!window.ethereum || !CONTRACT_ADDRESSES.TIPPING_CONTRACT) return;
+      
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESSES.TIPPING_CONTRACT,
+        TIPPING_CONTRACT_ABI,
+        provider
+      );
+
+      const userAddress = await signer.getAddress();
+      
+      // Get supported tokens
+      const supportedTokens = await contract.getSupportedTokens();
+      
+      // Load claimable balances for each token
+      const tips = [];
+      
+      // ETH balance
+      const ethBalance = await contract.getClaimableBalance(userAddress, ethers.ZeroAddress);
+      if (ethBalance > 0) {
+        tips.push({
+          token: 'ETH',
+          address: ethers.ZeroAddress,
+          balance: ethBalance,
+          symbol: 'ETH',
+          formatted: CONTRACT_HELPERS.formatTokenAmount(ethBalance.toString(), 18)
+        });
+      }
+      
+      // Token balances
+      for (const tokenAddress of supportedTokens) {
+        const balance = await contract.getClaimableBalance(userAddress, tokenAddress);
+        if (balance > 0) {
+          const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+          const symbol = await tokenContract.symbol();
+          const decimals = await tokenContract.decimals();
+          
+          tips.push({
+            token: symbol,
+            address: tokenAddress,
+            balance: balance,
+            symbol: symbol,
+            formatted: CONTRACT_HELPERS.formatTokenAmount(balance.toString(), decimals)
+          });
+        }
+      }
+      
+      setClaimableTips(tips);
+      
+    } catch (error) {
+      console.error('Error loading claimable tips:', error);
+    }
   };
 
-  // handleClaim (your existing code, with error handling)
-  const handleClaim = async (tokenName) => {
-    // ... existing
+  const handleClaimTip = async (tipData) => {
+    if (!user) return;
+    
+    setClaiming(prev => ({ ...prev, [tipData.token]: true }));
+    
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESSES.TIPPING_CONTRACT,
+        TIPPING_CONTRACT_ABI,
+        signer
+      );
+
+      let tx;
+      if (tipData.address === ethers.ZeroAddress) {
+        // Claim ETH
+        tx = await contract.claimETH();
+      } else {
+        // Claim token
+        tx = await contract.claimTokens(tipData.address);
+      }
+      
+      await tx.wait();
+      
+      alert(`Successfully claimed ${tipData.formatted} ${tipData.symbol}! 🎉`);
+      
+      // Reload claimable tips
+      await loadClaimableTips();
+      
+    } catch (error) {
+      console.error('Error claiming tip:', error);
+      alert('Failed to claim tip: ' + error.message);
+    } finally {
+      setClaiming(prev => ({ ...prev, [tipData.token]: false }));
+    }
   };
 
   if (loading) return <div className="card">Loading profile...</div>;
@@ -173,25 +240,37 @@ export default function ProfilePage() {
         <p>Premium Active: {premiumExpiry > Date.now() / 1000 ? `Yes (expires ${new Date(premiumExpiry * 1000).toLocaleDateString()})` : "No"}</p>
       </div>
       <div style={{ marginBottom: "16px" }}>
-        <h3 className="mb-2">Tips Received</h3>
-        <div className="token-grid">
-          {Object.keys(tips).map((token) => (
-            <div key={token} className="token-block">
-              <div className="token-info">
-                <span className="token-name">{token}</span>
-                <span className="token-amount">{tips[token]} {token}</span>
-                <span className="token-claimable">Claimable: {claimableTips.filter(t => t.token === token).reduce((sum, t) => sum + t.amount, 0).toFixed(4)} {token}</span>
+        <h3 className="mb-2">💰 Claimable Tips</h3>
+        {claimableTips.length === 0 ? (
+          <p className="small">No tips to claim yet. Engage with posts that have tip pools!</p>
+        ) : (
+          <div className="token-grid">
+            {claimableTips.map((tip) => (
+              <div key={tip.token} className="token-block">
+                <div className="token-info">
+                  <span className="token-name">{tip.symbol}</span>
+                  <span className="token-amount">{tip.formatted} {tip.symbol}</span>
+                  <span className="token-claimable">Ready to claim</span>
+                </div>
+                <button
+                  className="btn claim-btn"
+                  onClick={() => handleClaimTip(tip)}
+                  disabled={claiming[tip.token]}
+                  style={{ 
+                    backgroundColor: claiming[tip.token] ? '#ccc' : '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    cursor: claiming[tip.token] ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {claiming[tip.token] ? "Claiming..." : `🎯 Claim ${tip.symbol}`}
+                </button>
               </div>
-              <button
-                className="btn claim-btn"
-                onClick={() => handleClaim(token)}
-                disabled={claiming[token] || claimableTips.filter(t => t.token === token).length === 0}
-              >
-                {claiming[token] ? "Claiming..." : `Claim ${token}`}
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

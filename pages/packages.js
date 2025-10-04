@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { ethers } from "ethers";
-import { supabase } from "../lib/supabase";
-import { useAuth } from "../contexts/AuthContext";
-import contractABI from "../utils/contractABI.json";
+import { useAuth } from '../contexts/AuthContext';
+import { ethers } from 'ethers';
+import { TIPPING_CONTRACT_ABI, ERC20_ABI, CONTRACT_ADDRESSES } from '../utils/contractABI';
 
 export default function PackagesPage() {
   const { user, authenticated, login } = useAuth();
@@ -41,24 +40,13 @@ export default function PackagesPage() {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       
-      // Contract addresses for Base network
-      const contractAddress = process.env.NEXT_PUBLIC_TIPPING_CONTRACT_ADDRESS || "0x1234567890123456789012345678901234567890"; // Deploy the new contract
-      const usdcAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base USDC
-      
-      // Contract ABI for the new tipping contract
-      const contractABI = [
-        "function purchasePackage(uint256 packageId) external",
-        "function getPackage(uint256 packageId) external view returns (tuple(string name, uint256 priceUSDC, uint256 postLimit, bool isActive))",
-        "function packageCount() external view returns (uint256)"
-      ];
+      // Use the new tipping contract
+      const contractAddress = CONTRACT_ADDRESSES.TIPPING_CONTRACT;
+      const usdcAddress = CONTRACT_ADDRESSES.USDC;
       
       // Create contract instances
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
-      const usdcContract = new ethers.Contract(
-        usdcAddress, 
-        ["function approve(address,uint256) external returns (bool)", "function balanceOf(address) external view returns (uint256)"], 
-        signer
-      );
+      const contract = new ethers.Contract(contractAddress, TIPPING_CONTRACT_ABI, signer);
+      const usdcContract = new ethers.Contract(usdcAddress, ERC20_ABI, signer);
       
       // Check USDC balance
       const balance = await usdcContract.balanceOf(await signer.getAddress());
