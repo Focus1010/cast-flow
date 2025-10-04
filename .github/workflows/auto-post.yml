@@ -11,9 +11,23 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Check Secrets
+      run: |
+        if [ -z "${{ secrets.VERCEL_URL }}" ]; then
+          echo "❌ VERCEL_URL secret is not set"
+          exit 1
+        fi
+        if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+          echo "❌ CRON_SECRET secret is not set"
+          exit 1
+        fi
+        echo "✅ All secrets are configured"
+        
     - name: Process Scheduled Posts
       run: |
         echo "🚀 Processing scheduled posts..."
+        echo "Calling: ${{ secrets.VERCEL_URL }}/api/manual-process-posts"
+        
         response=$(curl -s -w "%{http_code}" -X POST "${{ secrets.VERCEL_URL }}/api/manual-process-posts" \
           -H "Content-Type: application/json" \
           -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
@@ -22,11 +36,12 @@ jobs:
         body="${response%???}"
         
         echo "HTTP Status: $http_code"
-        echo "Response: $body"
+        echo "Response Body: $body"
         
         if [ "$http_code" -eq 200 ]; then
           echo "✅ Successfully processed posts"
         else
-          echo "❌ Failed to process posts"
+          echo "❌ Failed to process posts (HTTP $http_code)"
+          echo "Response: $body"
           exit 1
         fi
