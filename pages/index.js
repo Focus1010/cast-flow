@@ -294,7 +294,26 @@ export default function SchedulerPage() {
           )}
 
           <div style={{ marginTop: "20px" }}>
-            <h3 className="mb-2">Scheduled Posts</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <h3 className="mb-0">Scheduled Posts</h3>
+              <button
+                className="btn-ghost"
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/manual-process-posts', { method: 'POST' });
+                    const result = await response.json();
+                    alert(`Processed ${result.processed} posts`);
+                    // Refresh the page to see updates
+                    window.location.reload();
+                  } catch (error) {
+                    alert('Failed to process posts: ' + error.message);
+                  }
+                }}
+                style={{ fontSize: "12px", padding: "4px 8px" }}
+              >
+                🔄 Process Now
+              </button>
+            </div>
             {posts.length === 0 ? (
               <p className="small">No scheduled posts yet.</p>
             ) : (
