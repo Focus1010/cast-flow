@@ -14,7 +14,7 @@ export default function SchedulerPage() {
   const { sendCalls } = useSendCalls();
   const { user, authenticated, login } = useAuth();
   const [posts, setPosts] = useState([]);
-  const [thread, setThread] = useState([{ id: Date.now(), content: "" }]);
+  const [thread, setThread] = useState([{ id: Date.now(), content: "", image: null }]);
   const [datetime, setDatetime] = useState("");
   const [packageInfo, setPackageInfo] = useState(null);
   const [limit, setLimit] = useState(10);
@@ -23,7 +23,6 @@ export default function SchedulerPage() {
   const [isInMiniApp, setIsInMiniApp] = useState(false);
   const [connectError, setConnectError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [images, setImages] = useState([]);
   const [schedulingStatus, setSchedulingStatus] = useState('');
 
   // Mini app init
@@ -86,9 +85,15 @@ export default function SchedulerPage() {
             setIsUnlimited(u.is_admin || u.package_type === "Unlimited");
             setLimit(u.is_admin ? Infinity : u.package_type === "Starter" ? 15 : u.package_type === "Pro" ? 30 : u.package_type === "Elite" ? 60 : 10);
           }
+          // Fix: user_id should reference the user's fid, not UUID
           const { data: p, error: pError } = await supabase.from('scheduled_posts').select('*').eq('user_id', user.fid);
-          if (pError) throw pError;
-          setPosts(p || []);
+          if (pError) {
+            console.error('Scheduled posts fetch error:', pError);
+            // If table doesn't exist or has issues, just set empty array
+            setPosts([]);
+          } else {
+            setPosts(p || []);
+          }
         } catch (error) {
           console.error("Data fetch error:", error);
           alert("Failed to load data: " + error.message);
@@ -102,8 +107,12 @@ export default function SchedulerPage() {
     setThread((prev) => prev.map((p) => (p.id === id ? { ...p, content: value } : p)));
   };
 
+  const handleImageChange = (id, imageUrl) => {
+    setThread((prev) => prev.map((p) => (p.id === id ? { ...p, image: imageUrl } : p)));
+  };
+
   const addThreadPost = () => {
-    setThread([...thread, { id: Date.now(), content: "" }]);
+    setThread([...thread, { id: Date.now(), content: "", image: null }]);
   };
 
   const deleteThreadPost = (id) => {
@@ -128,12 +137,15 @@ export default function SchedulerPage() {
     setSchedulingStatus("Scheduling post...");
     
     try {
+      // Collect all images from thread posts
+      const threadImages = validPosts.map(p => p.image).filter(img => img !== null);
+      
       // Store in database first (we'll handle posting via cron job)
       const { data: newPost, error } = await supabase.from('scheduled_posts').insert({
-        user_id: user.fid,
+        user_id: user.fid, // Use fid as string, not UUID
         posts: validPosts.map(p => p.content),
         datetime: scheduledTime.toISOString(),
-        images: images.length > 0 ? images : null,
+        images: threadImages.length > 0 ? threadImages : null,
         status: 'scheduled'
       }).select().single();
       
@@ -155,9 +167,8 @@ export default function SchedulerPage() {
       setMonthlyUsed(monthlyUsed + 1);
       
       // Reset form
-      setThread([{ id: Date.now(), content: "" }]);
+      setThread([{ id: Date.now(), content: "", image: null }]);
       setDatetime("");
-      setImages([]);
       
       // Clear status after 3 seconds
       setTimeout(() => setSchedulingStatus(""), 3000);
@@ -214,19 +225,31 @@ export default function SchedulerPage() {
           </div>
 
           {thread.map((p, idx) => (
-            <div key={p.id} style={{ marginBottom: "10px" }}>
+            <div key={p.id} style={{ marginBottom: "16px", padding: "12px", border: "1px solid #e5e5e5", borderRadius: "8px" }}>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
+                Post {idx + 1}
+              </label>
               <textarea
                 className="input"
-                placeholder={`Post ${idx + 1}`}
+                placeholder={`Write your post content...`}
                 value={p.content}
                 onChange={(e) => handleThreadChange(p.id, e.target.value)}
                 disabled={!isUnlimited && monthlyUsed >= limit}
-                style={{ minHeight: "100px", resize: "vertical", width: "100%" }}
+                style={{ minHeight: "100px", resize: "vertical", width: "100%", marginBottom: "8px" }}
               />
+              
+              {/* Individual Image Upload for each post */}
+              <ImageUpload 
+                onImagesChange={(images) => handleImageChange(p.id, images[0] || null)}
+                maxImages={1}
+                userId={user?.fid}
+                postId={p.id}
+              />
+              
               {thread.length > 1 && (
                 <button
                   className="btn-ghost"
-                  style={{ marginTop: "4px", color: "red" }}
+                  style={{ marginTop: "8px", color: "red", fontSize: "12px" }}
                   onClick={() => deleteThreadPost(p.id)}
                 >
                   🗑 Delete Post {idx + 1}
@@ -244,14 +267,6 @@ export default function SchedulerPage() {
             + Add Another Post
           </button>
 
-          {/* Image Upload Component */}
-          <div style={{ marginBottom: "16px" }}>
-            <ImageUpload 
-              onImagesChange={setImages}
-              maxImages={4}
-              userId={user?.fid}
-            />
-          </div>
 
           <div style={{ marginBottom: "16px" }}>
             <label htmlFor="datetime" className="schedule-label">
