@@ -1,33 +1,65 @@
-import React from 'react';
-import { ConnectWallet, Wallet, WalletDropdown, WalletDropdownLink, WalletDropdownDisconnect } from '@coinbase/onchainkit/wallet';
-import { Avatar, Name, Identity, EthBalance } from '@coinbase/onchainkit/identity';
-import { color } from '@coinbase/onchainkit/theme';
+import React, { useState, useEffect } from 'react';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
 
 export default function WalletConnect() {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  const formatAddress = (addr) => {
+    if (!addr) return '';
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  if (isConnected && address) {
+    return (
+      <div className="wallet-connected">
+        <button 
+          className="btn-ghost"
+          onClick={() => disconnect()}
+          style={{ 
+            fontSize: '12px', 
+            padding: '6px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          <span>🔗</span>
+          <span>{formatAddress(address)}</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="wallet-connect">
-      <Wallet>
-        <ConnectWallet>
-          <Avatar className="h-6 w-6" />
-          <Name />
-        </ConnectWallet>
-        <WalletDropdown>
-          <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-            <Avatar />
-            <Name />
-            <EthBalance />
-          </Identity>
-          <WalletDropdownLink
-            icon="wallet"
-            href="https://keys.coinbase.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Wallet
-          </WalletDropdownLink>
-          <WalletDropdownDisconnect />
-        </WalletDropdown>
-      </Wallet>
+      <button 
+        className="btn"
+        onClick={() => {
+          // Try Farcaster MiniApp first, then injected wallet
+          const farcasterConnector = connectors.find(c => c.name === 'Farcaster MiniApp');
+          const injectedConnector = connectors.find(c => c.name === 'Injected');
+          
+          const connector = farcasterConnector || injectedConnector || connectors[0];
+          if (connector) {
+            connect({ connector });
+          }
+        }}
+        style={{ 
+          fontSize: '12px', 
+          padding: '6px 12px' 
+        }}
+      >
+        Connect Wallet
+      </button>
     </div>
   );
 }
