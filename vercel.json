@@ -1,11 +1,5 @@
 {
   "rewrites": [
     {"source": "/:path*", "destination": "/"}
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/process-scheduled-posts",
-      "schedule": "0 * * * *"
-    }
   ]
 }
