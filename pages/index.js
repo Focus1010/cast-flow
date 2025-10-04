@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { usePrivy } from '@privy-io/react-auth';
-import { useAccount, useSendCalls } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useSendCalls } from 'wagmi';
 import { encodeFunctionData, parseUnits } from 'viem';
+import { sdk } from '@farcaster/miniapp-sdk';
 import { supabase } from "../lib/supabase";
 import contractABI from "../utils/contractABI.json"; // Get from Remix
+import { useAuth } from "../contexts/AuthContext";
 
 export default function SchedulerPage() {
-  const { login, logout, authenticated, user: privyUser, ready, error } = usePrivy(); // Privy for Farcaster auth
-  const { address } = useAccount(); // Wagmi for wallet
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
   const { sendCalls } = useSendCalls();
-  const [user, setUser] = useState(null); // {fid, wallet, signer_uuid, is_admin, username, bio}
+  const { user, authenticated, login } = useAuth();
   const [posts, setPosts] = useState([]);
   const [thread, setThread] = useState([{ id: Date.now(), content: "" }]);
   const [datetime, setDatetime] = useState("");
@@ -17,25 +19,27 @@ export default function SchedulerPage() {
   const [limit, setLimit] = useState(10);
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
+  const [isInMiniApp, setIsInMiniApp] = useState(false);
   const [connectError, setConnectError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Auto-load user from Privy (automatic if authenticated)
+  // Mini app init
   useEffect(() => {
-    if (ready && authenticated && privyUser) {
-      const farcaster = privyUser.farcaster || {};
-      const newUser = {
-        fid: farcaster.fid || 0,
-        wallet: address || farcaster.linkedAddresses[0] || '',
-        signer_uuid: farcaster.signerUuid || '',
-        is_admin: farcaster.fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID),
-        username: farcaster.username || '',
-        bio: farcaster.bio || '',
-      };
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
-      supabase.from('users').upsert(newUser).catch(error => console.error("Supabase upsert error:", error));
-    }
-  }, [ready, authenticated, privyUser, address]);
+    const initMiniApp = async () => {
+      setIsLoading(true);
+      try {
+        await sdk.actions.ready(); // Hide splash screen in mini app
+        const isMini = await sdk.isInMiniApp();
+        setIsInMiniApp(isMini);
+      } catch (error) {
+        console.error("Mini app init error:", error);
+        setConnectError("Failed to initialize mini app.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    initMiniApp();
+  }, []);
 
   // Load data
   useEffect(() => {
@@ -189,7 +193,7 @@ export default function SchedulerPage() {
     <div className="card">
       <h2 className="mb-3">Post Scheduler</h2>
 
-      {!user ? (
+      {!authenticated ? (
         <button className="btn" onClick={login}>Connect Wallet</button>
       ) : (
         <>
@@ -229,7 +233,7 @@ export default function SchedulerPage() {
           </button>
 
           <div style={{ marginBottom: "16px" }}>
-            <label htmlFor="datetime" style={{ display: "block", marginBottom: "6px", fontWeight: "600", fontSize: "14px" }}>
+            <label htmlFor="datetime" className="schedule-label">
               Schedule Time
             </label>
             <input
@@ -239,13 +243,13 @@ export default function SchedulerPage() {
               value={datetime}
               onChange={(e) => setDatetime(e.target.value)}
               disabled={!isUnlimited && monthlyUsed >= limit}
+              min={new Date().toISOString().slice(0, 16)}
             />
           </div>
 
           <button
             className="btn"
             onClick={handleSchedule}
-            disabled={!isUnlimited && monthlyUsed >= limit}
           >
             Schedule Post
           </button>

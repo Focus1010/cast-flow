@@ -1,23 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 
-export default function TipsConfigPage() {
-  const [user, setUser] = useState(null);
+export default function TipsPage() {
+  const { user, authenticated, login } = useAuth();
   const [token, setToken] = useState("USDC");
   const [amount, setAmount] = useState("");
   const [limit, setLimit] = useState("");
+  const [selectedPost, setSelectedPost] = useState("");
   const [actions, setActions] = useState({ like: false, repost: false, comment: false });
   const [configs, setConfigs] = useState([]);
-  const [selectedPost, setSelectedPost] = useState("");
   const [posts, setPosts] = useState([]);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data) setUser(data.user);
-    };
-    fetchUser();
-  }, []);
 
   useEffect(() => {
     if (user) {
@@ -45,8 +38,11 @@ export default function TipsConfigPage() {
     <div className="card">
       <h2 className="mb-3">Tips Configuration</h2>
 
-      {!user ? (
-        <div className="tag mb-3">⚠️ Sign in to configure tips.</div>
+      {!authenticated ? (
+        <div>
+          <div className="tag mb-3">⚠️ Sign in to configure tips.</div>
+          <button className="btn" onClick={login}>Connect Wallet</button>
+        </div>
       ) : (
         <>
           <div style={{ marginBottom: "16px" }}>

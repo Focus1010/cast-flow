@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function LeaderboardPage() {
+  const { user, authenticated, login } = useAuth();
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      setLoading(true);
       try {
         // Count scheduled posts per user and rank top 50
         const { data, error } = await supabase.rpc('get_top_users', { limit_count: 50 });
-        if (error) throw error;
-        setLeaderboard(data || []);
-      } catch (error) {
-        console.error("Leaderboard fetch failed:", error.message);
+        if (error) {
+          console.error("Leaderboard fetch failed:", error.message);
+          setLeaderboard([]);
+        } else {
+          setLeaderboard(data || []);
+        }
+      } catch (err) {
+        console.error("Leaderboard fetch failed:", err.message);
         setLeaderboard([]);
       } finally {
         setLoading(false);

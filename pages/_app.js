@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createConfig, http } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
+import { AuthProvider } from '../contexts/AuthContext';
 
 const queryClient = new QueryClient();
 
@@ -24,19 +25,21 @@ function MyApp({ Component, pageProps }) {
         appearance: {
           theme: 'dark',
           accentColor: '#7c3aed',
-          logo: 'https://your-app-domain.com/icon.png', // Optional, add your logo URL
+          logo: 'https://your-app-domain.com/icon.png',
         },
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets', // Auto-create wallet if none
+          createOnLogin: 'users-without-wallets',
           requireUserPasswordOnCreate: false,
         },
       }}
     >
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
-          <Layout>
-            <Component {...pageProps} />
-          </Layout>
+          <AuthProvider>
+            <Layout>
+              <Component {...pageProps} />
+            </Layout>
+          </AuthProvider>
         </QueryClientProvider>
       </WagmiProvider>
     </PrivyProvider>

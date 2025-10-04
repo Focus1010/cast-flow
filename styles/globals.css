@@ -47,26 +47,148 @@ body {
 
 /* Header */
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 12px;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: 14px;
-  padding: 18px;
+  margin-bottom: 24px;
   box-shadow: var(--shadow);
+  position: relative;
 }
 
-.header .logo {
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px;
+  width: 100%;
+}
+
+.logo h1 {
   font-size: 28px;
   font-weight: 800;
   background: var(--accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Desktop Navigation */
+.desktop-nav {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.desktop-nav a {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-dark);
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.desktop-nav a::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  opacity: 0.1;
+  transition: left 0.2s;
+}
+
+.desktop-nav a:hover::before {
+  left: 0;
+}
+
+.desktop-nav a:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* Mobile Menu Toggle */
+.mobile-menu-toggle {
+  display: none;
+  font-size: 20px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-dark);
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(1.05);
+}
+
+/* Mobile Dropdown */
+.mobile-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--card-dark);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  margin-top: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow);
+}
+
+.mobile-dropdown a {
+  color: var(--text-dark);
+  text-decoration: none;
+  padding: 12px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  text-align: center;
+}
+
+.mobile-dropdown a:hover {
+  background: var(--glass-bg);
+  color: #7c3aed;
+  transform: translateY(-1px);
+}
+
+.mobile-auth-section {
+  border-top: 1px solid var(--glass-border);
+  padding-top: 12px;
+  margin-top: 8px;
+}
+
+.mobile-auth-btn {
+  width: 100%;
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* Ensure desktop nav buttons are properly styled */
+.desktop-nav .btn,
+.desktop-nav .btn-ghost {
+  margin-left: 16px;
+  white-space: nowrap;
 }
 
 /* Navigation */
@@ -133,31 +255,26 @@ body {
   gap: 16px;
 }
 
+/* Responsive Design */
 @media (max-width: 768px) {
-  .hamburger {
+  .desktop-nav {
+    display: none;
+  }
+  
+  .mobile-menu-toggle {
     display: block;
   }
-  .nav-menu {
-    display: block;
-    position: absolute;
-    top: 100%;
-    right: 20px;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    padding: 16px;
-    flex-direction: column;
-    gap: 12px;
-    box-shadow: var(--shadow);
-    z-index: 1000;
-  }
-  .nav-menu.active {
-    display: flex;
-  }
-  .nav a {
+  
+  .header-content {
     padding: 12px 16px;
-    width: 100%;
-    text-align: center;
+  }
+  
+  .logo h1 {
+    font-size: 24px;
+  }
+  
+  .header-actions {
+    gap: 12px;
   }
 }
 
@@ -233,6 +350,91 @@ body {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.3);
   outline: none;
+}
+
+/* Custom DateTime Input */
+.datetime-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--card-dark);
+  color: var(--text-dark);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.datetime-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+  outline: none;
+  background: var(--glass-bg);
+}
+
+.datetime-input:hover {
+  border-color: rgba(124, 58, 237, 0.5);
+}
+
+.datetime-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Custom datetime input styling for webkit browsers */
+.datetime-input::-webkit-calendar-picker-indicator {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  filter: invert(1);
+}
+
+.datetime-input::-webkit-datetime-edit {
+  color: var(--text-dark);
+}
+
+.datetime-input::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+.datetime-input::-webkit-datetime-edit-text {
+  color: var(--muted);
+  padding: 0 2px;
+}
+
+.datetime-input::-webkit-datetime-edit-month-field,
+.datetime-input::-webkit-datetime-edit-day-field,
+.datetime-input::-webkit-datetime-edit-year-field,
+.datetime-input::-webkit-datetime-edit-hour-field,
+.datetime-input::-webkit-datetime-edit-minute-field {
+  background: transparent;
+  color: var(--text-dark);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.datetime-input::-webkit-datetime-edit-month-field:focus,
+.datetime-input::-webkit-datetime-edit-day-field:focus,
+.datetime-input::-webkit-datetime-edit-year-field:focus,
+.datetime-input::-webkit-datetime-edit-hour-field:focus,
+.datetime-input::-webkit-datetime-edit-minute-field:focus {
+  background: rgba(124, 58, 237, 0.2);
+  outline: none;
+}
+
+/* Schedule Time Label Styling */
+.schedule-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-dark);
+  background: var(--accent);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* List Item */

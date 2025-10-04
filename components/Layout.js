@@ -1,39 +1,71 @@
-import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
-const Layout = ({ children }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const router = useRouter();
+export default function Layout({ children }) {
+  const { login, logout, authenticated, user } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const toggleMenu = () => {
-    setMenuOpen(!menuOpen);
-  };
+  const closeMenu = () => setMobileMenuOpen(false);
 
-  const handleCloseMenu = () => {
-    setMenuOpen(false);
+  const handleNavClick = () => {
+    closeMenu(); // Close mobile menu when navigating
   };
 
   return (
     <div className="app">
       <header className="header">
-        <div className="logo">Cast Flow</div>
-        <button className="hamburger" onClick={toggleMenu}>
-          ☰
-        </button>
-        <nav className="nav">
-          <div className={`nav-menu ${menuOpen ? 'active' : ''}`}>
-            <Link href="/" onClick={handleCloseMenu}>Scheduler</Link>
-            <Link href="/leaderboard" onClick={handleCloseMenu}>Leaderboard</Link>
-            <Link href="/tips" onClick={handleCloseMenu}>Tips Configuration</Link>
-            <Link href="/packages" onClick={handleCloseMenu}>Buy Package</Link>
-            <Link href="/profile" onClick={handleCloseMenu}>Profile</Link>
+        <div className="header-content">
+          <div className="logo">
+            <h1>Cast Flow</h1>
           </div>
-        </nav>
+          
+          {/* Desktop Navigation - Hidden on mobile */}
+          <nav className="desktop-nav">
+            <Link href="/" onClick={handleNavClick}>Scheduler</Link>
+            <Link href="/leaderboard" onClick={handleNavClick}>Leaderboard</Link>
+            <Link href="/tips" onClick={handleNavClick}>Micro-Tips</Link>
+            <Link href="/packages" onClick={handleNavClick}>Buy Package</Link>
+            <Link href="/profile" onClick={handleNavClick}>Profile</Link>
+            {!authenticated ? (
+              <button className="btn" onClick={login}>Connect Wallet</button>
+            ) : (
+              <button className="btn-ghost" onClick={logout}>Disconnect</button>
+            )}
+          </nav>
+
+          {/* Mobile Menu Button Container */}
+          <div className="header-actions">
+            {/* Mobile Menu Toggle */}
+            <button 
+              className="mobile-menu-toggle"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              ☰
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="mobile-dropdown">
+            <Link href="/" onClick={handleNavClick}>Scheduler</Link>
+            <Link href="/leaderboard" onClick={handleNavClick}>Leaderboard</Link>
+            <Link href="/tips" onClick={handleNavClick}>Micro-Tips</Link>
+            <Link href="/packages" onClick={handleNavClick}>Buy Package</Link>
+            <Link href="/profile" onClick={handleNavClick}>Profile</Link>
+            <div className="mobile-auth-section">
+              {!authenticated ? (
+                <button className="btn mobile-auth-btn" onClick={() => { login(); handleNavClick(); }}>Connect Wallet</button>
+              ) : (
+                <button className="btn-ghost mobile-auth-btn" onClick={() => { logout(); handleNavClick(); }}>Disconnect</button>
+              )}
+            </div>
+          </div>
+        )}
       </header>
       <main>{children}</main>
     </div>
   );
-};
-
-export default Layout;
+}

@@ -1,28 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { ethers } from "ethers";
 import { supabase } from "../lib/supabase";
-import contractABI from "../utils/contractABI.json";
-
-const contractAddress = "YOUR_DEPLOYED_ADDRESS";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function PackagesPage() {
-  const [user, setUser] = useState(null);
+  const { user, authenticated, login } = useAuth();
+  const [status, setStatus] = useState("");
   const [packages, setPackages] = useState([
     { name: "Starter", price: 5, posts: 15 },
     { name: "Pro", price: 10, posts: 30 },
     { name: "Elite", price: 20, posts: 60 },
   ]);
-  const [status, setStatus] = useState("");
-
-  // Assume user from SIWF - in prod, use context or hook
-  useEffect(() => {
-    // Fetch user from local or session
-    const fetchUser = async () => {
-      const { data } = await supabase.auth.getSession(); // If using Supabase auth, else from local
-      if (data) setUser(data.user);
-    };
-    fetchUser();
-  }, []);
 
   const handleBuy = async (pkg) => {
     if (!user) return alert("Sign in first.");
@@ -41,19 +28,29 @@ export default function PackagesPage() {
   };
 
   return (
-    <div className="packages-page">
-      <h1>Buy Packages</h1>
-      <div className="packages-grid">
-        {packages.map((pkg) => (
-          <div key={pkg.name} className="package-card">
-            <div className="package-name">{pkg.name}</div>
-            <div className="package-price">${pkg.price} USDC</div>
-            <div className="package-posts">{pkg.posts} posts/month</div>
-            <button className="btn" onClick={() => handleBuy(pkg)}>Buy</button>
+    <div className="card">
+      <h2 className="mb-3">Buy Packages</h2>
+      
+      {!authenticated ? (
+        <div>
+          <p className="small mb-3">Please connect your wallet to purchase packages.</p>
+          <button className="btn" onClick={login}>Connect Wallet</button>
+        </div>
+      ) : (
+        <div>
+          <div className="packages-grid">
+            {packages.map((pkg) => (
+              <div key={pkg.name} className="package-card">
+                <div className="package-name">{pkg.name}</div>
+                <div className="package-price">${pkg.price} USDC</div>
+                <div className="package-posts">{pkg.posts} posts/month</div>
+                <button className="btn" onClick={() => handleBuy(pkg)}>Buy</button>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      {status && <p>{status}</p>}
+          {status && <p>{status}</p>}
+        </div>
+      )}
     </div>
   );
 }

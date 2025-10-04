@@ -2,36 +2,34 @@ import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { supabase } from "../lib/supabase";
 import contractABI from "../utils/contractABI.json";
+import { useAuth } from "../contexts/AuthContext";
 
 const contractAddress = process.env.CONTRACT_ADDRESS;
 
 export default function ProfilePage() {
-  const [user, setUser] = useState(null);
+  const { user, authenticated, login } = useAuth();
   const [tips, setTips] = useState({ ETH: 0, USDC: 0, ENB: 0, FCS: 0 });
   const [claimableTips, setClaimableTips] = useState([]);
   const [claiming, setClaiming] = useState({ ETH: false, USDC: false, ENB: false, FCS: false });
   const [castsUsed, setCastsUsed] = useState(0);
   const [premiumExpiry, setPremiumExpiry] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const loadUser = async () => {
+    const loadUserData = async () => {
+      if (!user) {
+        setError('No user data. Sign in first.');
+        return;
+      }
+      
       try {
-        const storedUser = localStorage.getItem('user');
-        if (!storedUser) {
-          setError('No user data. Sign in first.');
-          setLoading(false);
-          return;
-        }
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
 
         // Fetch from Supabase
         const { data: u, error: uError } = await supabase
           .from('users')
           .select('*')
-          .eq('fid', parsedUser.fid)
+          .eq('fid', user.fid)
           .single();
         if (uError) throw uError;
 
@@ -52,12 +50,13 @@ export default function ProfilePage() {
         }
       } catch (err) {
         setError('Failed to load profile: ' + err.message);
-      } finally {
-        setLoading(false);
       }
     };
-    loadUser();
-  }, []);
+    
+    if (authenticated && user) {
+      loadUserData();
+    }
+  }, [user, authenticated]);
 
   const getContract = () => {
     if (!window.ethereum) return null;
@@ -72,6 +71,17 @@ export default function ProfilePage() {
   };
 
   if (loading) return <div className="card">Loading profile...</div>;
+  
+  if (!authenticated) {
+    return (
+      <div className="card">
+        <h2 className="mb-3">Profile</h2>
+        <p className="small mb-3">Please connect your wallet to view your profile.</p>
+        <button className="btn" onClick={login}>Connect Wallet</button>
+      </div>
+    );
+  }
+  
   if (error) return <div className="card"><p className="small">{error}</p></div>;
 
   return (
