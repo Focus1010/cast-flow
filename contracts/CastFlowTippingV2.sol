@@ -132,7 +132,7 @@ contract CastFlowTippingV2 is ReentrancyGuard, Ownable, Pausable {
     
     // ============ CONSTRUCTOR ============
     
-    constructor(address _adminWallet) {
+    constructor(address _adminWallet) Ownable(_adminWallet) {
         require(_adminWallet != address(0), "Invalid admin wallet");
         adminWallet = _adminWallet;
         
