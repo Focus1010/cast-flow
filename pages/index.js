@@ -5,6 +5,7 @@ import { sdk } from '@farcaster/miniapp-sdk';
 import { supabase } from "../lib/supabase";
 import contractABI from "../utils/contractABI.json"; // Get from Remix
 import { useAuth } from "../contexts/AuthContext";
+import ImageUpload from "../components/ImageUpload";
 
 export default function SchedulerPage() {
   const { address, isConnected } = useAccount();
@@ -22,6 +23,8 @@ export default function SchedulerPage() {
   const [isInMiniApp, setIsInMiniApp] = useState(false);
   const [connectError, setConnectError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [images, setImages] = useState([]);
+  const [schedulingStatus, setSchedulingStatus] = useState('');
 
   // Mini app init
   useEffect(() => {
@@ -90,70 +93,58 @@ export default function SchedulerPage() {
     if (!user) return alert("Connect Wallet first.");
     if (!datetime) return alert("Select date/time.");
     if (!isUnlimited && monthlyUsed >= limit) return alert(`Limit reached for ${packageInfo || "Free"}. Buy a package!`);
+    
     const validPosts = thread.filter((p) => p.content.trim());
     if (validPosts.length === 0) return alert("Write something.");
-    const timestamp = Math.floor(new Date(datetime).getTime() / 1000);
+    
+    // Validate scheduled time is in the future
+    const scheduledTime = new Date(datetime);
+    const now = new Date();
+    if (scheduledTime <= now) {
+      return alert("Scheduled time must be in the future.");
+    }
+    
+    setSchedulingStatus("Scheduling post...");
+    
     try {
-      const response = await fetch('https://api.neynar.com/v2/farcaster/cast', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api_key': process.env.NEYNAR_API_KEY,
-          'x-neynar-experimental': 'true'
-        },
-        body: JSON.stringify({
-          signer_uuid: user.signer_uuid,
-          text: validPosts.map(p => p.content).join('\n\n---\n\n'),
-          scheduled_at: timestamp
-        })
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const data = await response.json();
-      const castId = data.hash;
-      const { error } = await supabase.from('scheduled_posts').insert({
+      // Store in database first (we'll handle posting via cron job)
+      const { data: newPost, error } = await supabase.from('scheduled_posts').insert({
         user_id: user.fid,
         posts: validPosts.map(p => p.content),
-        datetime: new Date(datetime).toISOString(),
-        cast_id: castId
-      });
+        datetime: scheduledTime.toISOString(),
+        images: images.length > 0 ? images : null,
+        status: 'scheduled'
+      }).select().single();
+      
       if (error) throw error;
-      // Example batch: Approve (USDC) and register (customize with real ABI/args)
-      sendCalls({
-        calls: [
-          {
-            to: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base USDC
-            data: encodeFunctionData({
-              abi: [{
-                "inputs": [
-                  { "name": "spender", "type": "address" },
-                  { "name": "amount", "type": "uint256" }
-                ],
-                "name": "approve",
-                "outputs": [{ "name": "", "type": "bool" }],
-                "stateMutability": "nonpayable",
-                "type": "function"
-              }], // ERC20 approve ABI
-              functionName: 'approve',
-              args: [process.env.CONTRACT_ADDRESS, parseUnits('1', 6)], // Approve 1 USDC
-            })
-          },
-          {
-            to: process.env.CONTRACT_ADDRESS,
-            data: encodeFunctionData({
-              abi: contractABI,
-              functionName: 'registerScheduledPost',
-              args: [castId, timestamp, address],
-            })
-          }
-        ]
-      });
-      setPosts([...posts, { _id: Date.now(), posts: validPosts.map(p => p.content), datetime, cast_id: castId }]);
-      await supabase.from('users').update({ monthly_used: monthlyUsed + 1 }).eq('fid', user.fid);
+      
+      setSchedulingStatus("✅ Post scheduled successfully!");
+      
+      // Update UI
+      setPosts([...posts, {
+        ...newPost,
+        _id: newPost.id
+      }]);
+      
+      // Update monthly usage
+      await supabase.from('users').update({ 
+        monthly_used: monthlyUsed + 1 
+      }).eq('fid', user.fid);
+      
+      setMonthlyUsed(monthlyUsed + 1);
+      
+      // Reset form
       setThread([{ id: Date.now(), content: "" }]);
       setDatetime("");
+      setImages([]);
+      
+      // Clear status after 3 seconds
+      setTimeout(() => setSchedulingStatus(""), 3000);
+      
     } catch (error) {
-      console.error(error);
-      alert("Scheduling failed: " + error.message);
+      console.error("Scheduling error:", error);
+      setSchedulingStatus("❌ Scheduling failed: " + error.message);
+      setTimeout(() => setSchedulingStatus(""), 5000);
     }
   };
 
@@ -232,6 +223,15 @@ export default function SchedulerPage() {
             + Add Another Post
           </button>
 
+          {/* Image Upload Component */}
+          <div style={{ marginBottom: "16px" }}>
+            <ImageUpload 
+              onImagesChange={setImages}
+              maxImages={4}
+              userId={user.fid}
+            />
+          </div>
+
           <div style={{ marginBottom: "16px" }}>
             <label htmlFor="datetime" className="schedule-label">
               Schedule Time
@@ -250,9 +250,27 @@ export default function SchedulerPage() {
           <button
             className="btn"
             onClick={handleSchedule}
+            disabled={schedulingStatus.includes("Scheduling")}
           >
-            Schedule Post
+            {schedulingStatus.includes("Scheduling") ? "Scheduling..." : "Schedule Post"}
           </button>
+
+          {schedulingStatus && (
+            <div style={{ 
+              marginTop: "12px", 
+              padding: "8px 12px", 
+              borderRadius: "6px",
+              backgroundColor: schedulingStatus.includes("✅") ? "rgba(34, 197, 94, 0.1)" : 
+                             schedulingStatus.includes("❌") ? "rgba(239, 68, 68, 0.1)" : 
+                             "rgba(124, 58, 237, 0.1)",
+              color: schedulingStatus.includes("✅") ? "#16a34a" : 
+                     schedulingStatus.includes("❌") ? "#dc2626" : "#7c3aed",
+              fontSize: "14px",
+              fontWeight: 500
+            }}>
+              {schedulingStatus}
+            </div>
+          )}
 
           <div style={{ marginTop: "20px" }}>
             <h3 className="mb-2">Scheduled Posts</h3>
@@ -264,34 +282,124 @@ export default function SchedulerPage() {
                   <li
                     key={entry.id || entry._id}
                     className="list-item"
-                    style={{ border: "1px solid #ccc", padding: "10px", borderRadius: "6px" }}
+                    style={{ 
+                      border: "1px solid #ccc", 
+                      padding: "12px", 
+                      borderRadius: "8px",
+                      backgroundColor: entry.status === 'posted' ? 'rgba(34, 197, 94, 0.05)' :
+                                     entry.status === 'failed' ? 'rgba(239, 68, 68, 0.05)' : 'transparent'
+                    }}
                   >
                     <div>
+                      {/* Status Badge */}
+                      {entry.status && (
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: 500,
+                          marginBottom: '8px',
+                          backgroundColor: entry.status === 'posted' ? '#16a34a' :
+                                         entry.status === 'failed' ? '#dc2626' :
+                                         entry.status === 'scheduled' ? '#7c3aed' : '#6b7280',
+                          color: 'white'
+                        }}>
+                          {entry.status === 'posted' ? '✅ Posted' :
+                           entry.status === 'failed' ? '❌ Failed' :
+                           entry.status === 'scheduled' ? '⏰ Scheduled' : 'Unknown'}
+                        </span>
+                      )}
+                      
+                      {/* Post Content */}
                       {entry.posts.map((text, i) => (
                         <p key={i} style={{ marginBottom: "6px" }}>
                           {text}
                         </p>
                       ))}
+                      
+                      {/* Images Preview */}
+                      {entry.images && entry.images.length > 0 && (
+                        <div style={{
+                          display: 'flex',
+                          gap: '8px',
+                          marginTop: '8px',
+                          marginBottom: '8px'
+                        }}>
+                          {entry.images.slice(0, 3).map((imageUrl, i) => (
+                            <img
+                              key={i}
+                              src={imageUrl}
+                              alt={`Attachment ${i + 1}`}
+                              style={{
+                                width: '60px',
+                                height: '60px',
+                                objectFit: 'cover',
+                                borderRadius: '4px',
+                                border: '1px solid #ddd'
+                              }}
+                            />
+                          ))}
+                          {entry.images.length > 3 && (
+                            <div style={{
+                              width: '60px',
+                              height: '60px',
+                              backgroundColor: '#f5f5f5',
+                              borderRadius: '4px',
+                              border: '1px solid #ddd',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '12px',
+                              color: '#666'
+                            }}>
+                              +{entry.images.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
                       <span className="small">
                         Scheduled for: {new Date(entry.datetime).toLocaleString()}
+                        {entry.posted_at && (
+                          <span style={{ marginLeft: '8px', color: '#16a34a' }}>
+                            • Posted: {new Date(entry.posted_at).toLocaleString()}
+                          </span>
+                        )}
                       </span>
+                      
+                      {entry.error_message && (
+                        <p style={{ 
+                          color: '#dc2626', 
+                          fontSize: '12px', 
+                          marginTop: '4px',
+                          fontStyle: 'italic'
+                        }}>
+                          Error: {entry.error_message}
+                        </p>
+                      )}
                     </div>
-                    <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                      <button
-                        className="btn-ghost"
-                        style={{ color: "red" }}
-                        onClick={() => removePost(entry.id || entry._id)}
-                      >
-                        ✖ Remove
-                      </button>
-                      <button
-                        className="btn-ghost"
-                        style={{ color: "green" }}
-                        onClick={() => handlePostNow(entry.id || entry._id)}
-                      >
-                        ✅ Post Now
-                      </button>
-                    </div>
+                    
+                    {entry.status !== 'posted' && (
+                      <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                        <button
+                          className="btn-ghost"
+                          style={{ color: "red" }}
+                          onClick={() => removePost(entry.id || entry._id)}
+                        >
+                          ✖ Remove
+                        </button>
+                        {entry.status === 'scheduled' && (
+                          <button
+                            className="btn-ghost"
+                            style={{ color: "green" }}
+                            onClick={() => handlePostNow(entry.id || entry._id)}
+                          >
+                            ✅ Post Now
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
