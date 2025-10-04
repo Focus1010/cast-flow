@@ -315,13 +315,26 @@ export default function SchedulerPage() {
                 className="btn-ghost"
                 onClick={async () => {
                   try {
-                    const response = await fetch('/api/manual-process-posts', { method: 'POST' });
+                    setSchedulingStatus("🔄 Processing posts...");
+                    
+                    const response = await fetch('/api/manual-process-posts', { 
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json'
+                      }
+                    });
+                    
                     const result = await response.json();
-                    alert(`Processed ${result.processed} posts`);
+                    setSchedulingStatus(`✅ Processed ${result.processed} posts`);
+                    
                     // Refresh the page to see updates
-                    window.location.reload();
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 2000);
+                    
                   } catch (error) {
-                    alert('Failed to process posts: ' + error.message);
+                    setSchedulingStatus(`❌ Failed to process posts: ${error.message}`);
+                    setTimeout(() => setSchedulingStatus(""), 5000);
                   }
                 }}
                 style={{ fontSize: "12px", padding: "4px 8px" }}

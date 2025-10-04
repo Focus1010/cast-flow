@@ -1,0 +1,32 @@
+name: Auto Post Scheduler
+
+on:
+  schedule:
+    # Run every 15 minutes (much better than Vercel Hobby's hourly + delays)
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  process-posts:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Process Scheduled Posts
+      run: |
+        echo "🚀 Processing scheduled posts..."
+        response=$(curl -s -w "%{http_code}" -X POST "${{ secrets.VERCEL_URL }}/api/manual-process-posts" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+        
+        http_code="${response: -3}"
+        body="${response%???}"
+        
+        echo "HTTP Status: $http_code"
+        echo "Response: $body"
+        
+        if [ "$http_code" -eq 200 ]; then
+          echo "✅ Successfully processed posts"
+        else
+          echo "❌ Failed to process posts"
+          exit 1
+        fi
