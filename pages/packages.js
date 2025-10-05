@@ -20,7 +20,14 @@ export default function PackagesPage() {
     
     // Check if we have wallet connection
     if (!window.ethereum) {
-      return alert("Please connect your wallet first. Make sure you have a Web3 wallet installed.");
+      return alert("Please install MetaMask or another Web3 wallet to make purchases.");
+    }
+
+    // Request wallet connection if not connected
+    try {
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+    } catch (error) {
+      return alert("Please connect your wallet to continue with the purchase.");
     }
     
     setStatus("Processing purchase...");

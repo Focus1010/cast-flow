@@ -21,10 +21,23 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       
       if (authenticated && privyUser) {
+        // Get the actual connected wallet address (not embedded wallet)
+        let actualWallet = '';
+        try {
+          if (window.ethereum) {
+            const provider = new (await import('ethers')).BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            actualWallet = await signer.getAddress();
+          }
+        } catch (error) {
+          console.log('No external wallet connected, using Privy wallet');
+          actualWallet = privyUser.wallet?.address || '';
+        }
+
         // User is authenticated with Privy
         const newUser = {
           fid: privyUser.farcaster?.fid || 0,
-          wallet: privyUser.wallet?.address || '',
+          wallet: actualWallet,
           signer_uuid: privyUser.farcaster?.signerUuid || '',
           is_admin: privyUser.farcaster?.fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID),
           username: privyUser.farcaster?.username || '',
