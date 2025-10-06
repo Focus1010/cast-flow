@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 
 export default function Layout({ children }) {
   const { login, logout, authenticated, user } = useAuth();
@@ -29,20 +28,12 @@ export default function Layout({ children }) {
             <Link href="/packages" onClick={handleNavClick}>Buy Package</Link>
             <Link href="/profile" onClick={handleNavClick}>Profile</Link>
             {!authenticated ? (
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button className="btn" onClick={login}>Connect Wallet</button>
-                <Wallet>
-                  <ConnectWallet />
-                </Wallet>
-              </div>
+              <button className="btn" onClick={login}>Connect Wallet</button>
             ) : (
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <span style={{ fontSize: '14px', opacity: 0.8 }}>
                   {user?.display_name || user?.username || 'Connected'}
                 </span>
-                <Wallet>
-                  <ConnectWallet />
-                </Wallet>
                 <button className="btn-ghost" onClick={logout}>Disconnect</button>
               </div>
             )}

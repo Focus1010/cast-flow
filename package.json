@@ -9,8 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@coinbase/onchainkit": "^0.30.0",
-    "@farcaster/auth-kit": "^0.2.0",
     "@farcaster/miniapp-sdk": "^0.1.10",
     "@farcaster/miniapp-wagmi-connector": "^1.0.0",
     "@neynar/nodejs-sdk": "^3.34.0",
