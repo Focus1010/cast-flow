@@ -33,6 +33,8 @@ export const AuthProvider = ({ children }) => {
           const response = await fetch(`/api/get-user-by-address?address=${address}`);
           const userData = await response.json();
           
+          console.log('📊 Neynar API response:', userData);
+          
           if (userData.success && userData.user) {
             // Found Farcaster user data
             const farcasterUser = {

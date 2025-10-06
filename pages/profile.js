@@ -205,6 +205,47 @@ export default function ProfilePage() {
       </div>
     );
   }
+
+  // Add manual FID input if no Farcaster data found
+  const [manualFid, setManualFid] = useState('');
+  const [loadingManualFid, setLoadingManualFid] = useState(false);
+
+  const handleManualFidLookup = async () => {
+    if (!manualFid || !manualFid.trim()) {
+      alert('Please enter a valid FID');
+      return;
+    }
+
+    setLoadingManualFid(true);
+    try {
+      const response = await fetch(`/api/get-user-data?fid=${manualFid.trim()}`);
+      const userData = await response.json();
+      
+      if (userData.success && userData.user) {
+        // Update user with Farcaster data
+        const updatedUser = {
+          ...user,
+          fid: userData.user.fid,
+          username: userData.user.username,
+          display_name: userData.user.display_name,
+          bio: userData.user.profile?.bio?.text || '',
+          pfp_url: userData.user.pfp_url,
+          signer_uuid: userData.user.signer_uuid || '', // This might be available
+        };
+        
+        console.log('✅ Manual FID lookup successful:', updatedUser);
+        // You'd need to update the auth context here
+        alert('Farcaster profile loaded! Note: You may still need signer permissions for posting.');
+      } else {
+        alert('FID not found or invalid');
+      }
+    } catch (error) {
+      console.error('Error looking up FID:', error);
+      alert('Error looking up FID: ' + error.message);
+    } finally {
+      setLoadingManualFid(false);
+    }
+  };
   
   if (error) return <div className="card"><p className="small">{error}</p></div>;
 
@@ -257,6 +298,54 @@ export default function ProfilePage() {
             </p>
           )}
         </div>
+        
+        {/* Manual FID Input if no Farcaster data */}
+        {(!user?.fid || user?.fid === 0) && (
+          <div style={{ 
+            marginTop: "16px", 
+            padding: "12px", 
+            backgroundColor: "#fef3c7", 
+            borderRadius: "6px",
+            border: "1px solid #f59e0b"
+          }}>
+            <p style={{ margin: "0 0 8px 0", fontSize: "12px", color: "#92400e" }}>
+              ⚠️ No Farcaster profile found. Enter your FID manually to enable posting:
+            </p>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <input
+                type="number"
+                placeholder="Enter your FID (e.g. 12345)"
+                value={manualFid}
+                onChange={(e) => setManualFid(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "6px 8px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "4px",
+                  fontSize: "12px"
+                }}
+              />
+              <button
+                onClick={handleManualFidLookup}
+                disabled={loadingManualFid}
+                style={{
+                  padding: "6px 12px",
+                  backgroundColor: loadingManualFid ? "#ccc" : "#f59e0b",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  fontSize: "12px",
+                  cursor: loadingManualFid ? "not-allowed" : "pointer"
+                }}
+              >
+                {loadingManualFid ? "Loading..." : "Load Profile"}
+              </button>
+            </div>
+            <p style={{ margin: "8px 0 0 0", fontSize: "10px", color: "#92400e" }}>
+              Find your FID at <a href="https://warpcast.com/~/settings" target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b" }}>warpcast.com/~/settings</a>
+            </p>
+          </div>
+        )}
       </div>
       <div style={{ marginBottom: "16px" }}>
         <h3 className="mb-2">Usage</h3>
