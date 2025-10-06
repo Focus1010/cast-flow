@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import { useWallets } from '@privy-io/react-auth';
-import { ethers } from 'ethers';
-import { TIPPING_CONTRACT_ABI, CONTRACT_ADDRESSES } from '../utils/contractABI';
+import React, { useState, useEffect } from 'react';
+import { useAccount, useConnect, useWriteContract, useReadContract } from 'wagmi';
+import { TIPPING_CONTRACT_ABI, CONTRACT_ADDRESSES, CONTRACT_HELPERS } from '../utils/contractABI';
 
 export default function TipClaimButton({ user, postId, onTipClaimed }) {
   const [loading, setLoading] = useState(false);
   const [tipPool, setTipPool] = useState(null);
   const [hasClaimed, setHasClaimed] = useState(false);
-  const { wallets } = useWallets();
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { writeContract } = useWriteContract();
 
   useEffect(() => {
     if (user && postId) {

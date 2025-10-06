@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
+import { useAccount } from 'wagmi';
 
 const AuthContext = createContext();
 
@@ -13,7 +14,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const { login, logout, authenticated, user: privyUser } = usePrivy();
-  const { wallets } = useWallets();
+  const { address, isConnected } = useAccount();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -65,21 +66,9 @@ export const AuthProvider = ({ children }) => {
                 console.log('⚠️ No verified addresses, using custody address:', primaryWallet);
               }
               
-              // Get Privy embedded wallet address
-              let embeddedWalletAddress = '';
-              try {
-                const embeddedWallet = wallets.find(wallet => wallet.walletClientType === 'privy');
-                if (embeddedWallet) {
-                  embeddedWalletAddress = embeddedWallet.address;
-                  console.log('🔗 Privy embedded wallet:', embeddedWalletAddress);
-                }
-              } catch (error) {
-                console.log('No embedded wallet found:', error.message);
-              }
-
               const newUser = {
                 fid: fid,
-                wallet: embeddedWalletAddress || primaryWallet, // Prefer embedded wallet
+                wallet: address || primaryWallet, // Use Wagmi connected address or fallback to Farcaster primary
                 farcaster_wallet: primaryWallet, // Keep Farcaster wallet for reference
                 custody_address: userData.user.custody_address || '',
                 signer_uuid: privyUser.farcaster?.signerUuid || '',
@@ -90,7 +79,14 @@ export const AuthProvider = ({ children }) => {
                 pfp_url: userData.user.pfp_url || '',
                 follower_count: userData.user.follower_count || 0,
                 following_count: userData.user.following_count || 0,
+                isConnected: isConnected,
               };
+              
+              console.log('✅ User data with Wagmi wallet:', {
+                wagmiAddress: address,
+                farcasterPrimary: primaryWallet,
+                isConnected: isConnected
+              });
               
               console.log('✅ User data fetched:', newUser);
               setUser(newUser);

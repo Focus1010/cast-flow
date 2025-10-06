@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from '../contexts/AuthContext';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { ethers } from 'ethers';
+import { useAccount, useConnect, useWriteContract, useReadContract } from 'wagmi';
+import { parseUnits, formatUnits } from 'viem';
 import { supabase } from '../lib/supabase';
 import { TIPPING_CONTRACT_ABI, ERC20_ABI, CONTRACT_ADDRESSES } from '../utils/contractABI';
 
 export default function PackagesPage() {
   const { user, authenticated, login } = useAuth();
-  const { wallets } = useWallets();
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { writeContract } = useWriteContract();
   const [status, setStatus] = useState("");
   const [packages, setPackages] = useState([
     { name: "Starter", price: 5, posts: 15 },
@@ -15,57 +17,73 @@ export default function PackagesPage() {
     { name: "Elite", price: 20, posts: 60 },
   ]);
 
+  // Read USDC balance
+  const { data: usdcBalance } = useReadContract({
+    address: CONTRACT_ADDRESSES.USDC,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: [address],
+    enabled: !!address,
+  });
+
   const handleBuy = async (pkg) => {
     if (!authenticated || !user) {
       return alert("Please connect your Farcaster account first.");
     }
     
-    // Get Privy embedded wallet
-    const embeddedWallet = wallets.find(wallet => wallet.walletClientType === 'privy');
-    if (!embeddedWallet) {
-      return alert("Embedded wallet not found. Please try refreshing the app.");
+    // Connect wallet if not connected
+    if (!isConnected) {
+      const farcasterConnector = connectors.find(c => c.id === 'farcasterMiniApp');
+      if (farcasterConnector) {
+        try {
+          await connect({ connector: farcasterConnector });
+        } catch (error) {
+          return alert("Failed to connect wallet. Please try again.");
+        }
+      } else {
+        return alert("Farcaster wallet connector not found.");
+      }
     }
 
-    setStatus("Connecting to wallet...");
+    if (!address) {
+      return alert("No wallet address found. Please connect your wallet.");
+    }
+
+    setStatus("Processing purchase...");
     
     try {
-      // Connect to Privy embedded wallet
-      await embeddedWallet.connect();
+      console.log('✅ Connected wallet address:', address);
       
-      // Get provider from Privy wallet
-      const provider = await embeddedWallet.getEthereumProvider();
-      const ethersProvider = new ethers.BrowserProvider(provider);
-      const signer = await ethersProvider.getSigner();
-      
-      console.log('✅ Connected to Privy embedded wallet');
-      console.log('Wallet address:', await signer.getAddress());
-      
-      // Use the new tipping contract
-      const contractAddress = CONTRACT_ADDRESSES.TIPPING_CONTRACT;
-      const usdcAddress = CONTRACT_ADDRESSES.USDC;
-      
-      // Create contract instances
-      const contract = new ethers.Contract(contractAddress, TIPPING_CONTRACT_ABI, signer);
-      const usdcContract = new ethers.Contract(usdcAddress, ERC20_ABI, signer);
+      const priceInUSDC = parseUnits(pkg.price.toString(), 6); // USDC has 6 decimals
       
       // Check USDC balance
-      const balance = await usdcContract.balanceOf(await signer.getAddress());
-      const requiredAmount = ethers.parseUnits(pkg.price.toString(), 6);
-      
-      if (balance < requiredAmount) {
-        setStatus(`Insufficient USDC balance. Need ${pkg.price} USDC.`);
-        return;
+      if (!usdcBalance || usdcBalance < priceInUSDC) {
+        const balanceFormatted = usdcBalance ? formatUnits(usdcBalance, 6) : '0';
+        return alert(`Insufficient USDC balance. You have ${balanceFormatted} USDC, need ${pkg.price} USDC`);
       }
-      
-      // Approve USDC spending
+
       setStatus("Approving USDC...");
-      const approveTx = await usdcContract.approve(contractAddress, requiredAmount);
-      await approveTx.wait();
       
-      // Buy package
+      // First approve USDC spending
+      const approveResult = await writeContract({
+        address: CONTRACT_ADDRESSES.USDC,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [CONTRACT_ADDRESSES.TIPPING_CONTRACT, priceInUSDC],
+      });
+
+      console.log('USDC approval transaction:', approveResult);
       setStatus("Purchasing package...");
-      const buyTx = await contract.buyPackage(pkg.name, requiredAmount);
-      await buyTx.wait();
+
+      // Then purchase the package
+      const purchaseResult = await writeContract({
+        address: CONTRACT_ADDRESSES.TIPPING_CONTRACT,
+        abi: TIPPING_CONTRACT_ABI,
+        functionName: 'buyPackage',
+        args: [pkg.name, priceInUSDC],
+      });
+      
+      console.log('Package purchase transaction:', purchaseResult);
       
       // Update user data in Supabase
       const { error: dbError } = await supabase
@@ -74,7 +92,7 @@ export default function PackagesPage() {
           fid: user.fid,
           package_type: pkg.name, 
           premium_expiry: Math.floor(Date.now() / 1000) + 30*24*3600,
-          wallet_address: await signer.getAddress()
+          wallet_address: address
         });
       
       if (dbError) console.error("Database update error:", dbError);

@@ -231,7 +231,10 @@ export default function ProfilePage() {
         </div>
         
         <div style={{ marginBottom: "12px" }}>
-          <label className="small">Primary Wallet (For Transactions)</label>
+          <label className="small">
+            Primary Wallet (For Transactions) 
+            {user?.isConnected && <span style={{ color: '#16a34a', marginLeft: '8px' }}>✅ Connected</span>}
+          </label>
           <input 
             className="input" 
             type="text" 
@@ -241,7 +244,7 @@ export default function ProfilePage() {
           />
           {(!user?.wallet || user?.wallet === 'Not connected') && (
             <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-              💡 Connect a wallet to your Farcaster account to enable transactions
+              💡 Wallet will connect automatically when you make transactions
             </p>
           )}
         </div>
