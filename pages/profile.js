@@ -239,18 +239,6 @@ export default function ProfilePage() {
             readOnly 
             style={{ fontSize: "12px", fontFamily: "monospace" }}
           />
-          {user?.custody_address && user?.custody_address !== user?.wallet && (
-            <div style={{ marginTop: '8px' }}>
-              <label className="small" style={{ opacity: 0.7 }}>Custody Address (Read-only)</label>
-              <input 
-                className="input" 
-                type="text" 
-                value={user.custody_address} 
-                readOnly 
-                style={{ fontSize: "12px", fontFamily: "monospace", opacity: 0.7 }}
-              />
-            </div>
-          )}
           {(!user?.wallet || user?.wallet === 'Not connected') && (
             <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
               💡 Connect a wallet to your Farcaster account to enable transactions

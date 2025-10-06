@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
             const userData = await response.json();
             
             if (userData.success) {
-              // Get the primary connected wallet (not custody address)
+              // Get the primary wallet - prioritize the most recently connected/active wallet
               let primaryWallet = '';
               console.log('🔍 Available addresses:', {
                 custody: userData.user.custody_address,
@@ -40,10 +40,24 @@ export const AuthProvider = ({ children }) => {
                 all_verified: userData.user.verified_addresses
               });
               
+              // Strategy: Use the verified address that's NOT the custody address (this is usually the primary)
               if (userData.user.verified_addresses?.eth_addresses?.length > 0) {
-                // Use the first verified Ethereum address as primary
-                primaryWallet = userData.user.verified_addresses.eth_addresses[0];
-                console.log('✅ Using verified ETH address as primary:', primaryWallet);
+                const ethAddresses = userData.user.verified_addresses.eth_addresses;
+                const custodyAddress = userData.user.custody_address?.toLowerCase();
+                
+                // Find the first verified address that's NOT the custody address
+                const nonCustodyAddress = ethAddresses.find(addr => 
+                  addr.toLowerCase() !== custodyAddress
+                );
+                
+                if (nonCustodyAddress) {
+                  primaryWallet = nonCustodyAddress;
+                  console.log('✅ Using non-custody verified address as primary:', primaryWallet);
+                } else {
+                  // If all verified addresses are custody, use the first one
+                  primaryWallet = ethAddresses[0];
+                  console.log('✅ Using first verified ETH address as primary:', primaryWallet);
+                }
               } else if (userData.user.custody_address) {
                 // Fallback to custody address if no verified addresses
                 primaryWallet = userData.user.custody_address;
