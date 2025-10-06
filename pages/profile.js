@@ -231,7 +231,7 @@ export default function ProfilePage() {
         </div>
         
         <div style={{ marginBottom: "12px" }}>
-          <label className="small">Wallet Address</label>
+          <label className="small">Primary Wallet (For Transactions)</label>
           <input 
             className="input" 
             type="text" 
@@ -239,9 +239,21 @@ export default function ProfilePage() {
             readOnly 
             style={{ fontSize: "12px", fontFamily: "monospace" }}
           />
+          {user?.custody_address && user?.custody_address !== user?.wallet && (
+            <div style={{ marginTop: '8px' }}>
+              <label className="small" style={{ opacity: 0.7 }}>Custody Address (Read-only)</label>
+              <input 
+                className="input" 
+                type="text" 
+                value={user.custody_address} 
+                readOnly 
+                style={{ fontSize: "12px", fontFamily: "monospace", opacity: 0.7 }}
+              />
+            </div>
+          )}
           {(!user?.wallet || user?.wallet === 'Not connected') && (
             <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-              💡 Wallet address will be auto-detected from your Farcaster account
+              💡 Connect a wallet to your Farcaster account to enable transactions
             </p>
           )}
         </div>

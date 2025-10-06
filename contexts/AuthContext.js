@@ -32,9 +32,28 @@ export const AuthProvider = ({ children }) => {
             const userData = await response.json();
             
             if (userData.success) {
+              // Get the primary connected wallet (not custody address)
+              let primaryWallet = '';
+              console.log('🔍 Available addresses:', {
+                custody: userData.user.custody_address,
+                verified_eth: userData.user.verified_addresses?.eth_addresses,
+                all_verified: userData.user.verified_addresses
+              });
+              
+              if (userData.user.verified_addresses?.eth_addresses?.length > 0) {
+                // Use the first verified Ethereum address as primary
+                primaryWallet = userData.user.verified_addresses.eth_addresses[0];
+                console.log('✅ Using verified ETH address as primary:', primaryWallet);
+              } else if (userData.user.custody_address) {
+                // Fallback to custody address if no verified addresses
+                primaryWallet = userData.user.custody_address;
+                console.log('⚠️ No verified addresses, using custody address:', primaryWallet);
+              }
+              
               const newUser = {
                 fid: fid,
-                wallet: userData.user.custody_address || userData.user.verified_addresses?.eth_addresses?.[0] || '',
+                wallet: primaryWallet,
+                custody_address: userData.user.custody_address || '',
                 signer_uuid: privyUser.farcaster?.signerUuid || '',
                 is_admin: fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID),
                 username: userData.user.username || '',
