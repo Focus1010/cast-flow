@@ -206,19 +206,26 @@ export default function ProfilePage() {
       {/* User Info Section */}
       <div style={{ marginBottom: "24px", padding: "16px", backgroundColor: "rgba(124, 58, 237, 0.1)", borderRadius: "8px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px" }}>
-          {user?.username && (
-            <img 
-              src={`https://res.cloudinary.com/merkle-manufactory/image/fetch/c_fill,f_png,w_144/${encodeURIComponent(`https://warpcast.com/~/channel-images/${user.username}.png`)}`}
-              alt="Profile"
-              style={{ width: "64px", height: "64px", borderRadius: "50%", objectFit: "cover" }}
-              onError={(e) => {
-                e.target.src = `https://api.dicebear.com/7.x/identicon/svg?seed=${user.fid}`;
-              }}
-            />
-          )}
+          <img 
+            src={user?.pfp_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${user?.fid}`}
+            alt="Profile"
+            style={{ width: "64px", height: "64px", borderRadius: "50%", objectFit: "cover" }}
+            onError={(e) => {
+              e.target.src = `https://api.dicebear.com/7.x/identicon/svg?seed=${user?.fid}`;
+            }}
+          />
           <div>
-            <h3 style={{ margin: 0, color: "#7c3aed" }}>@{user?.username || 'Anonymous'}</h3>
-            <p style={{ margin: "4px 0", fontSize: "14px", opacity: 0.8 }}>FID: {user?.fid}</p>
+            <h3 style={{ margin: 0, color: "#7c3aed" }}>
+              {user?.display_name || user?.username || 'Anonymous'}
+            </h3>
+            <p style={{ margin: "4px 0", fontSize: "14px", opacity: 0.8 }}>
+              @{user?.username} • FID: {user?.fid}
+            </p>
+            {user?.follower_count !== undefined && (
+              <p style={{ margin: "4px 0", fontSize: "12px", opacity: 0.7 }}>
+                {user.follower_count} followers • {user.following_count} following
+              </p>
+            )}
             {user?.bio && <p style={{ margin: "4px 0", fontSize: "14px", fontStyle: "italic" }}>{user.bio}</p>}
           </div>
         </div>
@@ -232,6 +239,11 @@ export default function ProfilePage() {
             readOnly 
             style={{ fontSize: "12px", fontFamily: "monospace" }}
           />
+          {(!user?.wallet || user?.wallet === 'Not connected') && (
+            <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+              💡 Wallet address will be auto-detected from your Farcaster account
+            </p>
+          )}
         </div>
       </div>
       <div style={{ marginBottom: "16px" }}>

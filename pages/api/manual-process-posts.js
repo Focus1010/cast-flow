@@ -75,6 +75,9 @@ export default async function handler(req, res) {
           }));
         }
 
+        console.log('🚀 Posting cast with data:', JSON.stringify(castData, null, 2));
+        console.log('🔑 Using API key:', process.env.NEYNAR_API_KEY ? 'Present' : 'Missing');
+
         // Post the cast via Neynar
         const response = await fetch('https://api.neynar.com/v2/farcaster/cast', {
           method: 'POST',

@@ -21,30 +21,62 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       
       if (authenticated && privyUser) {
-        // Get the actual connected wallet address (not embedded wallet)
-        let actualWallet = '';
+        // For Farcaster mini app, fetch user data from Neynar API
         try {
-          if (window.ethereum) {
-            const provider = new (await import('ethers')).BrowserProvider(window.ethereum);
-            const signer = await provider.getSigner();
-            actualWallet = await signer.getAddress();
+          const fid = privyUser.farcaster?.fid;
+          if (fid) {
+            console.log('🔍 Fetching user data from Neynar for FID:', fid);
+            
+            // Fetch user data from Neynar
+            const response = await fetch(`/api/get-user-data?fid=${fid}`);
+            const userData = await response.json();
+            
+            if (userData.success) {
+              const newUser = {
+                fid: fid,
+                wallet: userData.user.custody_address || userData.user.verified_addresses?.eth_addresses?.[0] || '',
+                signer_uuid: privyUser.farcaster?.signerUuid || '',
+                is_admin: fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID),
+                username: userData.user.username || '',
+                bio: userData.user.profile?.bio?.text || '',
+                display_name: userData.user.display_name || '',
+                pfp_url: userData.user.pfp_url || '',
+                follower_count: userData.user.follower_count || 0,
+                following_count: userData.user.following_count || 0,
+              };
+              
+              console.log('✅ User data fetched:', newUser);
+              setUser(newUser);
+              localStorage.setItem('user', JSON.stringify(newUser));
+            } else {
+              // Fallback to Privy data if Neynar fails
+              console.log('⚠️ Neynar fetch failed, using Privy data');
+              const newUser = {
+                fid: fid,
+                wallet: privyUser.wallet?.address || '',
+                signer_uuid: privyUser.farcaster?.signerUuid || '',
+                is_admin: fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID),
+                username: privyUser.farcaster?.username || '',
+                bio: privyUser.farcaster?.bio || '',
+              };
+              setUser(newUser);
+              localStorage.setItem('user', JSON.stringify(newUser));
+            }
           }
         } catch (error) {
-          console.log('No external wallet connected, using Privy wallet');
-          actualWallet = privyUser.wallet?.address || '';
+          console.error('Error fetching user data:', error);
+          // Fallback to Privy data
+          const newUser = {
+            fid: privyUser.farcaster?.fid || 0,
+            wallet: privyUser.wallet?.address || '',
+            signer_uuid: privyUser.farcaster?.signerUuid || '',
+            is_admin: privyUser.farcaster?.fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID),
+            username: privyUser.farcaster?.username || '',
+            bio: privyUser.farcaster?.bio || '',
+          };
+          setUser(newUser);
+          localStorage.setItem('user', JSON.stringify(newUser));
         }
-
-        // User is authenticated with Privy
-        const newUser = {
-          fid: privyUser.farcaster?.fid || 0,
-          wallet: actualWallet,
-          signer_uuid: privyUser.farcaster?.signerUuid || '',
-          is_admin: privyUser.farcaster?.fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID),
-          username: privyUser.farcaster?.username || '',
-          bio: privyUser.farcaster?.bio || '',
-        };
-        setUser(newUser);
-        localStorage.setItem('user', JSON.stringify(newUser));
       } else {
         // Check localStorage for existing user data
         const storedUser = localStorage.getItem('user');

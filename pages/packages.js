@@ -18,14 +18,30 @@ export default function PackagesPage() {
       return alert("Please connect your Farcaster account first.");
     }
     
-    // Check if we have wallet connection
-    if (!window.ethereum) {
-      return alert("Please install MetaMask or another Web3 wallet to make purchases.");
+    if (!user.wallet) {
+      return alert("No wallet address found in your Farcaster account. Please make sure you have a verified wallet address.");
     }
 
-    // Request wallet connection if not connected
+    // For Farcaster mini app, we need to use the user's connected wallet
+    // This will prompt them to connect their wallet if not already connected
+    if (!window.ethereum) {
+      return alert("Please open this app in a wallet-enabled browser or connect your wallet.");
+    }
+
+    // Request wallet connection
     try {
       await window.ethereum.request({ method: 'eth_requestAccounts' });
+      
+      // Verify the connected wallet matches the user's Farcaster wallet
+      const { ethers } = await import('ethers');
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const connectedAddress = await signer.getAddress();
+      
+      console.log('Connected wallet:', connectedAddress);
+      console.log('Farcaster wallet:', user.wallet);
+      
+      // Allow transaction even if addresses don't match (user might have multiple wallets)
     } catch (error) {
       return alert("Please connect your wallet to continue with the purchase.");
     }
