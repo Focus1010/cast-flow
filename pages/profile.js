@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAccount, useWriteContract, useReadContract } from 'wagmi';
 import { supabase } from '../lib/supabase';
 import { ethers } from 'ethers';
-import { TIPPING_CONTRACT_ABI, ERC20_ABI, CONTRACT_ADDRESSES, CONTRACT_HELPERS } from '../utils/contractABI';
+import { TIPPING_CONTRACT_ABI, ERC20_ABI, CONTRACT_ADDRESSES } from '../utils/contractABI';
 
 const contractAddress = process.env.CONTRACT_ADDRESS;
 
@@ -17,6 +17,8 @@ export default function ProfilePage() {
   const [premiumExpiry, setPremiumExpiry] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [manualFid, setManualFid] = useState('');
+  const [loadingManualFid, setLoadingManualFid] = useState(false);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -161,6 +163,10 @@ export default function ProfilePage() {
     try {
       console.log('🎯 Claiming tip:', tipData);
       
+      if (!CONTRACT_ADDRESSES?.TIPPING_CONTRACT) {
+        throw new Error('Tipping contract address not configured');
+      }
+
       let result;
       if (tipData.address === ethers.ZeroAddress) {
         // Claim ETH
@@ -205,10 +211,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  // Add manual FID input if no Farcaster data found
-  const [manualFid, setManualFid] = useState('');
-  const [loadingManualFid, setLoadingManualFid] = useState(false);
 
   const handleManualFidLookup = async () => {
     if (!manualFid || !manualFid.trim()) {
@@ -405,7 +407,7 @@ export default function ProfilePage() {
               onClick={() => handleClaimTip({ 
                 token: 'USDC', 
                 symbol: 'USDC', 
-                address: CONTRACT_ADDRESSES.USDC,
+                address: CONTRACT_ADDRESSES?.USDC || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
                 formatted: '0.00'
               })}
               disabled={claiming.USDC}
@@ -437,7 +439,7 @@ export default function ProfilePage() {
               onClick={() => handleClaimTip({ 
                 token: 'ENB', 
                 symbol: 'ENB', 
-                address: CONTRACT_ADDRESSES.ENB || '0x0000000000000000000000000000000000000000',
+                address: CONTRACT_ADDRESSES?.ENB || '0x0000000000000000000000000000000000000000',
                 formatted: '0.00'
               })}
               disabled={claiming.ENB}
@@ -469,7 +471,7 @@ export default function ProfilePage() {
               onClick={() => handleClaimTip({ 
                 token: 'FCS', 
                 symbol: 'FCS', 
-                address: CONTRACT_ADDRESSES.CASTFLOW_TOKEN || '0x0000000000000000000000000000000000000000',
+                address: CONTRACT_ADDRESSES?.CASTFLOW_TOKEN || '0x0000000000000000000000000000000000000000',
                 formatted: '0.00'
               })}
               disabled={claiming.FCS}
