@@ -1,10 +1,16 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useAccount } from 'wagmi';
+import { isAdmin } from '../utils/tokenGating';
 
 export default function Layout({ children }) {
   const { login, logout, authenticated, user } = useAuth();
+  const { address } = useAccount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Check if current user is admin
+  const userIsAdmin = authenticated && isAdmin(address, user?.fid);
 
   const closeMenu = () => setMobileMenuOpen(false);
 
@@ -27,6 +33,11 @@ export default function Layout({ children }) {
             <Link href="/tips" onClick={handleNavClick}>Micro-Tips</Link>
             <Link href="/packages" onClick={handleNavClick}>Buy Package</Link>
             <Link href="/profile" onClick={handleNavClick}>Profile</Link>
+            {userIsAdmin && (
+              <Link href="/admin" onClick={handleNavClick} style={{ color: '#dc2626', fontWeight: 'bold' }}>
+                👑 Admin
+              </Link>
+            )}
             {!authenticated ? (
               <button className="btn" onClick={login}>Connect Wallet</button>
             ) : (
@@ -60,6 +71,11 @@ export default function Layout({ children }) {
             <Link href="/tips" onClick={handleNavClick}>Micro-Tips</Link>
             <Link href="/packages" onClick={handleNavClick}>Buy Package</Link>
             <Link href="/profile" onClick={handleNavClick}>Profile</Link>
+            {userIsAdmin && (
+              <Link href="/admin" onClick={handleNavClick} style={{ color: '#dc2626', fontWeight: 'bold' }}>
+                👑 Admin Panel
+              </Link>
+            )}
             <div className="mobile-auth-section">
               {!authenticated ? (
                 <button className="btn mobile-auth-btn" onClick={() => { login(); handleNavClick(); }}>Connect Wallet</button>

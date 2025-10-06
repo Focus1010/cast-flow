@@ -21,27 +21,30 @@ export default function SchedulerPage() {
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
   const [isInMiniApp, setIsInMiniApp] = useState(false);
-  const [connectError, setConnectError] = useState(null);
   const [schedulingOnChain, setSchedulingOnChain] = useState(false);
   const [accessStatus, setAccessStatus] = useState({ checking: false, hasUnlimited: false, reason: '', tokens: {} });
   const [isLoading, setIsLoading] = useState(true);
   const [schedulingStatus, setSchedulingStatus] = useState('');
 
-  // Mini app init
+  // Mini app init - check if running in Farcaster
   useEffect(() => {
     const initMiniApp = async () => {
       setIsLoading(true);
       try {
-        await sdk.actions.ready(); // Hide splash screen in mini app
-        const isMini = await sdk.isInMiniApp();
+        // Check if we're in a Farcaster mini app environment
+        const isMini = typeof window !== 'undefined' && 
+                      (window.location.href.includes('warpcast.com') || 
+                       window.parent !== window);
         setIsInMiniApp(isMini);
+        console.log('🔍 Mini app detected:', isMini);
       } catch (error) {
         console.error("Mini app init error:", error);
-        setConnectError("Failed to initialize mini app.");
+        setIsInMiniApp(false);
       } finally {
         setIsLoading(false);
       }
     };
+
     initMiniApp();
   }, []);
 
@@ -204,14 +207,10 @@ export default function SchedulerPage() {
       console.log('Content hash:', contentHash);
       console.log('Scheduled time:', scheduledTimeUnix);
       
-      // Simulate on-chain transaction (replace with actual contract call)
-      const onChainTx = await writeContract({
-        address: '0x0000000000000000000000000000000000000000', // Placeholder - will be scheduling contract
-        abi: [{"inputs":[],"name":"placeholder","outputs":[],"stateMutability":"payable","type":"function"}],
-        functionName: 'placeholder',
-        args: [],
-        value: '10000000000000000' // 0.01 ETH commitment fee
-      });
+      // For now, we'll skip the on-chain transaction until contract is deployed
+      // This will use normal Base network gas fees (< 1 cent)
+      console.log('⏭️ Skipping on-chain transaction until contract deployment');
+      const onChainTx = 'pending_contract_deployment';
       
       console.log('✅ On-chain commitment successful:', onChainTx);
       
