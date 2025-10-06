@@ -202,6 +202,13 @@ export default function SchedulerPage() {
       try {
         console.log('🚀 Posting now for entry:', entry);
         
+        console.log('👤 User object:', user);
+        console.log('🔑 Signer UUID:', user?.signer_uuid);
+        
+        if (!user?.signer_uuid) {
+          throw new Error('No signer UUID found. Please ensure you have a Farcaster account connected.');
+        }
+        
         const response = await fetch('/api/post-now', {
           method: 'POST',
           headers: {

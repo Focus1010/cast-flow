@@ -53,11 +53,17 @@ export default function PackagesPage() {
     
     try {
       console.log('✅ Connected wallet address:', address);
+      console.log('🏗️ Contract addresses:', CONTRACT_ADDRESSES);
+      
+      if (!CONTRACT_ADDRESSES.TIPPING_CONTRACT) {
+        throw new Error('Tipping contract address not configured. Please set NEXT_PUBLIC_TIPPING_CONTRACT_ADDRESS in environment variables.');
+      }
       
       const priceInUSDC = parseUnits(pkg.price.toString(), 6); // USDC has 6 decimals
       
       // Balance check disabled for testing
       console.log('💰 Attempting to purchase package:', pkg.name, 'for', pkg.price, 'USDC');
+      console.log('💳 Price in wei:', priceInUSDC.toString());
       
       setStatus("Approving USDC...");
       
@@ -72,7 +78,11 @@ export default function PackagesPage() {
       console.log('USDC approval transaction:', approveResult);
       setStatus("Purchasing package...");
 
+      // Wait for approval transaction to be confirmed
+      console.log('⏳ Waiting for USDC approval...');
+      
       // Then purchase the package
+      console.log('💳 Attempting package purchase...');
       const purchaseResult = await writeContract({
         address: CONTRACT_ADDRESSES.TIPPING_CONTRACT,
         abi: TIPPING_CONTRACT_ABI,
@@ -80,7 +90,7 @@ export default function PackagesPage() {
         args: [pkg.name, priceInUSDC],
       });
       
-      console.log('Package purchase transaction:', purchaseResult);
+      console.log('📦 Package purchase transaction:', purchaseResult);
       
       // Update user data in Supabase
       const { error: dbError } = await supabase

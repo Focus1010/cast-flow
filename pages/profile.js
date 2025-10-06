@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from '../contexts/AuthContext';
+import { useAccount, useWriteContract, useReadContract } from 'wagmi';
 import { supabase } from '../lib/supabase';
 import { ethers } from 'ethers';
 import { TIPPING_CONTRACT_ABI, ERC20_ABI, CONTRACT_ADDRESSES, CONTRACT_HELPERS } from '../utils/contractABI';
@@ -8,6 +9,8 @@ const contractAddress = process.env.CONTRACT_ADDRESS;
 
 export default function ProfilePage() {
   const { user, authenticated, login } = useAuth();
+  const { address, isConnected } = useAccount();
+  const { writeContract } = useWriteContract();
   const [claimableTips, setClaimableTips] = useState([]);
   const [claiming, setClaiming] = useState({ ETH: false, USDC: false, ENB: false, FCS: false });
   const [castsUsed, setCastsUsed] = useState(0);
@@ -148,30 +151,36 @@ export default function ProfilePage() {
   };
 
   const handleClaimTip = async (tipData) => {
-    if (!user) return;
+    if (!user || !isConnected) {
+      alert('Please connect your wallet first');
+      return;
+    }
     
     setClaiming(prev => ({ ...prev, [tipData.token]: true }));
     
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(
-        CONTRACT_ADDRESSES.TIPPING_CONTRACT,
-        TIPPING_CONTRACT_ABI,
-        signer
-      );
-
-      let tx;
+      console.log('🎯 Claiming tip:', tipData);
+      
+      let result;
       if (tipData.address === ethers.ZeroAddress) {
         // Claim ETH
-        tx = await contract.claimETH();
+        result = await writeContract({
+          address: CONTRACT_ADDRESSES.TIPPING_CONTRACT,
+          abi: TIPPING_CONTRACT_ABI,
+          functionName: 'claimETH',
+          args: [],
+        });
       } else {
         // Claim token
-        tx = await contract.claimTokens(tipData.address);
+        result = await writeContract({
+          address: CONTRACT_ADDRESSES.TIPPING_CONTRACT,
+          abi: TIPPING_CONTRACT_ABI,
+          functionName: 'claimTokens',
+          args: [tipData.address],
+        });
       }
       
-      await tx.wait();
-      
+      console.log('✅ Claim transaction:', result);
       alert(`Successfully claimed ${tipData.formatted} ${tipData.symbol}! 🎉`);
       
       // Reload claimable tips
@@ -179,7 +188,7 @@ export default function ProfilePage() {
       
     } catch (error) {
       console.error('Error claiming tip:', error);
-      alert('Failed to claim tip: ' + error.message);
+      alert('Failed to claim tip: ' + (error.message || error));
     } finally {
       setClaiming(prev => ({ ...prev, [tipData.token]: false }));
     }
@@ -256,34 +265,156 @@ export default function ProfilePage() {
       </div>
       <div style={{ marginBottom: "16px" }}>
         <h3 className="mb-2">💰 Claimable Tips</h3>
-        {claimableTips.length === 0 ? (
-          <p className="small">No tips to claim yet. Engage with posts that have tip pools!</p>
-        ) : (
-          <div className="token-grid">
-            {claimableTips.map((tip) => (
-              <div key={tip.token} className="token-block">
-                <div className="token-info">
-                  <span className="token-name">{tip.symbol}</span>
-                  <span className="token-amount">{tip.formatted} {tip.symbol}</span>
-                  <span className="token-claimable">Ready to claim</span>
+        
+        {/* Individual Token Claim Buttons */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          {/* ETH Claim Button */}
+          <div style={{ 
+            border: '1px solid #e5e7eb', 
+            borderRadius: '8px', 
+            padding: '12px',
+            backgroundColor: '#f9fafb'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>ETH</span>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>Ethereum</span>
+            </div>
+            <button
+              className="btn"
+              onClick={() => handleClaimTip({ 
+                token: 'ETH', 
+                symbol: 'ETH', 
+                address: ethers.ZeroAddress,
+                formatted: '0.00' // Will be updated when we load actual amounts
+              })}
+              disabled={claiming.ETH}
+              style={{ 
+                width: '100%',
+                backgroundColor: claiming.ETH ? '#ccc' : '#3b82f6',
+                color: 'white',
+                fontSize: '12px',
+                padding: '6px 12px'
+              }}
+            >
+              {claiming.ETH ? "Claiming..." : "🎯 Claim ETH"}
+            </button>
+          </div>
+
+          {/* USDC Claim Button */}
+          <div style={{ 
+            border: '1px solid #e5e7eb', 
+            borderRadius: '8px', 
+            padding: '12px',
+            backgroundColor: '#f9fafb'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>USDC</span>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>USD Coin</span>
+            </div>
+            <button
+              className="btn"
+              onClick={() => handleClaimTip({ 
+                token: 'USDC', 
+                symbol: 'USDC', 
+                address: CONTRACT_ADDRESSES.USDC,
+                formatted: '0.00'
+              })}
+              disabled={claiming.USDC}
+              style={{ 
+                width: '100%',
+                backgroundColor: claiming.USDC ? '#ccc' : '#10b981',
+                color: 'white',
+                fontSize: '12px',
+                padding: '6px 12px'
+              }}
+            >
+              {claiming.USDC ? "Claiming..." : "🎯 Claim USDC"}
+            </button>
+          </div>
+
+          {/* ENB Claim Button */}
+          <div style={{ 
+            border: '1px solid #e5e7eb', 
+            borderRadius: '8px', 
+            padding: '12px',
+            backgroundColor: '#f9fafb'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>ENB</span>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>ENB Token</span>
+            </div>
+            <button
+              className="btn"
+              onClick={() => handleClaimTip({ 
+                token: 'ENB', 
+                symbol: 'ENB', 
+                address: CONTRACT_ADDRESSES.ENB || '0x0000000000000000000000000000000000000000',
+                formatted: '0.00'
+              })}
+              disabled={claiming.ENB}
+              style={{ 
+                width: '100%',
+                backgroundColor: claiming.ENB ? '#ccc' : '#f59e0b',
+                color: 'white',
+                fontSize: '12px',
+                padding: '6px 12px'
+              }}
+            >
+              {claiming.ENB ? "Claiming..." : "🎯 Claim ENB"}
+            </button>
+          </div>
+
+          {/* Cast Flow Token Claim Button */}
+          <div style={{ 
+            border: '1px solid #e5e7eb', 
+            borderRadius: '8px', 
+            padding: '12px',
+            backgroundColor: '#f9fafb'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>FCS</span>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>Cast Flow</span>
+            </div>
+            <button
+              className="btn"
+              onClick={() => handleClaimTip({ 
+                token: 'FCS', 
+                symbol: 'FCS', 
+                address: CONTRACT_ADDRESSES.CASTFLOW_TOKEN || '0x0000000000000000000000000000000000000000',
+                formatted: '0.00'
+              })}
+              disabled={claiming.FCS}
+              style={{ 
+                width: '100%',
+                backgroundColor: claiming.FCS ? '#ccc' : '#8b5cf6',
+                color: 'white',
+                fontSize: '12px',
+                padding: '6px 12px'
+              }}
+            >
+              {claiming.FCS ? "Claiming..." : "🎯 Claim FCS"}
+            </button>
+          </div>
+        </div>
+
+        {claimableTips.length > 0 && (
+          <div>
+            <h4 style={{ marginBottom: '8px', fontSize: '14px', color: '#6b7280' }}>Available Tips:</h4>
+            <div className="token-grid">
+              {claimableTips.map((tip) => (
+                <div key={tip.token} className="token-block" style={{ 
+                  padding: '8px', 
+                  border: '1px solid #e5e7eb', 
+                  borderRadius: '6px',
+                  backgroundColor: '#f9fafb'
+                }}>
+                  <div className="token-info">
+                    <span className="token-name" style={{ fontWeight: 'bold' }}>{tip.symbol}</span>
+                    <span className="token-amount" style={{ fontSize: '12px', color: '#6b7280' }}>{tip.formatted} {tip.symbol}</span>
+                  </div>
                 </div>
-                <button
-                  className="btn claim-btn"
-                  onClick={() => handleClaimTip(tip)}
-                  disabled={claiming[tip.token]}
-                  style={{ 
-                    backgroundColor: claiming[tip.token] ? '#ccc' : '#10b981',
-                    color: 'white',
-                    border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    cursor: claiming[tip.token] ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {claiming[tip.token] ? "Claiming..." : `🎯 Claim ${tip.symbol}`}
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>
