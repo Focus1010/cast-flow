@@ -18,10 +18,18 @@
 ```
 
 ### **3. Smart Contract Deployment**
-- [ ] Deploy `CastFlowTippingV3.sol` to Base network via Remix
-- [ ] Set `NEXT_PUBLIC_TIPPING_CONTRACT_ADDRESS` in environment
-- [ ] Add your address as admin in the contract
-- [ ] Set token addresses (ENB, Cast Flow token) in contract
+- [ ] Deploy `CastFlowTippingSimple.sol` to Base network via Remix IDE
+- [ ] Copy contract address and set `NEXT_PUBLIC_TIPPING_CONTRACT_ADDRESS` in environment
+- [ ] Contract automatically makes deployer the owner and admin
+- [ ] Call `setTokenAddresses()` to set ENB and Cast Flow token addresses
+- [ ] Add additional admins using `addAdmin()` if needed
+
+**Remix Deployment Steps:**
+1. Go to https://remix.ethereum.org/
+2. Create new file and paste `CastFlowTippingSimple.sol` content
+3. Compile with Solidity ^0.8.0
+4. Deploy to Base network (Chain ID: 8453)
+5. Verify contract on BaseScan
 
 ### **4. GitHub Repository Setup**
 - [ ] Push code to GitHub repository

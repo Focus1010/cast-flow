@@ -1,30 +1,22 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+pragma solidity ^0.8.0;
 
 /**
- * @title CastFlowTippingV3
- * @dev Enhanced tipping contract for Cast Flow with creator-controlled tip pools
- * Features: Multi-token support, automatic refunds, admin controls, gas-optimized
+ * @title CastFlowTippingSimple
+ * @dev Simplified tipping contract for Cast Flow - Remix IDE compatible
+ * Features: Multi-token support, tip pools, admin controls
  */
-contract CastFlowTippingV3 is ReentrancyGuard, Pausable, Ownable {
-    using SafeERC20 for IERC20;
-
+contract CastFlowTippingSimple {
+    
     struct TipPool {
         address creator;
-        address token; // 0x0 for ETH
+        address token; // address(0) for ETH
         uint256 amountPerUser;
         uint256 maxRecipients;
         uint256 totalFunded;
         uint256 totalClaimed;
         uint256 expiresAt;
         bool active;
-        mapping(address => bool) hasClaimed;
     }
 
     struct UserTips {
@@ -32,19 +24,21 @@ contract CastFlowTippingV3 is ReentrancyGuard, Pausable, Ownable {
         uint256 totalUSDC;
         uint256 totalENB;
         uint256 totalCastFlow;
-        mapping(address => uint256) tokenBalances;
     }
 
     // State variables
     mapping(uint256 => TipPool) public tipPools;
+    mapping(uint256 => mapping(address => bool)) public hasClaimed;
     mapping(address => UserTips) public userTips;
     mapping(address => bool) public admins;
     
+    address public owner;
     uint256 public nextPoolId = 1;
     uint256 public constant REFUND_PERIOD = 30 days;
+    bool public paused = false;
     
-    // Supported tokens
-    address public constant USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913; // Base USDC
+    // Supported tokens on Base
+    address public constant USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address public ENB_TOKEN;
     address public CASTFLOW_TOKEN;
 
@@ -56,12 +50,32 @@ contract CastFlowTippingV3 is ReentrancyGuard, Pausable, Ownable {
     event AdminAdded(address indexed admin);
     event AdminRemoved(address indexed admin);
 
-    modifier onlyAdmin() {
-        require(admins[msg.sender] || msg.sender == owner(), "Not admin");
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
         _;
     }
 
+    modifier onlyAdmin() {
+        require(admins[msg.sender] || msg.sender == owner, "Not admin");
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!paused, "Contract paused");
+        _;
+    }
+
+    modifier nonReentrant() {
+        require(!_locked, "Reentrant call");
+        _locked = true;
+        _;
+        _locked = false;
+    }
+
+    bool private _locked;
+
     constructor() {
+        owner = msg.sender;
         admins[msg.sender] = true;
     }
 
@@ -77,30 +91,47 @@ contract CastFlowTippingV3 is ReentrancyGuard, Pausable, Ownable {
         require(maxRecipients > 0, "Max recipients must be > 0");
         
         poolId = nextPoolId++;
-        TipPool storage pool = tipPools[poolId];
         
-        pool.creator = msg.sender;
-        pool.token = token;
-        pool.amountPerUser = amountPerUser;
-        pool.maxRecipients = maxRecipients;
-        pool.expiresAt = block.timestamp + REFUND_PERIOD;
-        pool.active = true;
-
         uint256 totalRequired = amountPerUser * maxRecipients;
 
         if (token == address(0)) {
             // ETH tip pool
             require(msg.value >= totalRequired, "Insufficient ETH");
-            pool.totalFunded = msg.value;
+            
+            tipPools[poolId] = TipPool({
+                creator: msg.sender,
+                token: address(0),
+                amountPerUser: amountPerUser,
+                maxRecipients: maxRecipients,
+                totalFunded: msg.value,
+                totalClaimed: 0,
+                expiresAt: block.timestamp + REFUND_PERIOD,
+                active: true
+            });
         } else {
             // ERC20 tip pool
             require(msg.value == 0, "No ETH for token pools");
-            IERC20(token).safeTransferFrom(msg.sender, address(this), totalRequired);
-            pool.totalFunded = totalRequired;
+            
+            // Transfer tokens from user to contract
+            (bool success, bytes memory data) = token.call(
+                abi.encodeWithSignature("transferFrom(address,address,uint256)", msg.sender, address(this), totalRequired)
+            );
+            require(success && (data.length == 0 || abi.decode(data, (bool))), "Token transfer failed");
+            
+            tipPools[poolId] = TipPool({
+                creator: msg.sender,
+                token: token,
+                amountPerUser: amountPerUser,
+                maxRecipients: maxRecipients,
+                totalFunded: totalRequired,
+                totalClaimed: 0,
+                expiresAt: block.timestamp + REFUND_PERIOD,
+                active: true
+            });
         }
 
         emit TipPoolCreated(poolId, msg.sender, token, amountPerUser, maxRecipients);
-        emit TipPoolFunded(poolId, pool.totalFunded);
+        emit TipPoolFunded(poolId, tipPools[poolId].totalFunded);
     }
 
     /**
@@ -110,22 +141,22 @@ contract CastFlowTippingV3 is ReentrancyGuard, Pausable, Ownable {
         TipPool storage pool = tipPools[poolId];
         require(pool.active, "Pool not active");
         require(block.timestamp < pool.expiresAt, "Pool expired");
-        require(!pool.hasClaimed[user], "Already claimed");
+        require(!hasClaimed[poolId][user], "Already claimed");
         require(pool.totalClaimed + pool.amountPerUser <= pool.totalFunded, "Insufficient funds");
 
-        pool.hasClaimed[user] = true;
+        hasClaimed[poolId][user] = true;
         pool.totalClaimed += pool.amountPerUser;
 
         // Update user tips tracking
         UserTips storage userTip = userTips[user];
         
         if (pool.token == address(0)) {
+            // ETH transfer
             userTip.totalETH += pool.amountPerUser;
-            payable(user).transfer(pool.amountPerUser);
+            (bool success, ) = payable(user).call{value: pool.amountPerUser}("");
+            require(success, "ETH transfer failed");
         } else {
-            userTip.tokenBalances[pool.token] += pool.amountPerUser;
-            
-            // Update specific token counters
+            // ERC20 transfer
             if (pool.token == USDC) {
                 userTip.totalUSDC += pool.amountPerUser;
             } else if (pool.token == ENB_TOKEN) {
@@ -134,7 +165,10 @@ contract CastFlowTippingV3 is ReentrancyGuard, Pausable, Ownable {
                 userTip.totalCastFlow += pool.amountPerUser;
             }
             
-            IERC20(pool.token).safeTransfer(user, pool.amountPerUser);
+            (bool success, bytes memory data) = pool.token.call(
+                abi.encodeWithSignature("transfer(address,uint256)", user, pool.amountPerUser)
+            );
+            require(success && (data.length == 0 || abi.decode(data, (bool))), "Token transfer failed");
         }
 
         emit TipClaimed(poolId, user, pool.amountPerUser);
@@ -155,9 +189,13 @@ contract CastFlowTippingV3 is ReentrancyGuard, Pausable, Ownable {
         pool.active = false;
 
         if (pool.token == address(0)) {
-            payable(pool.creator).transfer(refundAmount);
+            (bool success, ) = payable(pool.creator).call{value: refundAmount}("");
+            require(success, "ETH refund failed");
         } else {
-            IERC20(pool.token).safeTransfer(pool.creator, refundAmount);
+            (bool success, bytes memory data) = pool.token.call(
+                abi.encodeWithSignature("transfer(address,uint256)", pool.creator, refundAmount)
+            );
+            require(success && (data.length == 0 || abi.decode(data, (bool))), "Token refund failed");
         }
 
         emit TipPoolRefunded(poolId, refundAmount);
@@ -167,23 +205,19 @@ contract CastFlowTippingV3 is ReentrancyGuard, Pausable, Ownable {
      * @dev Get user's claimable tips for a specific token
      */
     function getUserTips(address user, address token) external view returns (uint256) {
+        UserTips storage tips = userTips[user];
+        
         if (token == address(0)) {
-            return userTips[user].totalETH;
+            return tips.totalETH;
         } else if (token == USDC) {
-            return userTips[user].totalUSDC;
+            return tips.totalUSDC;
         } else if (token == ENB_TOKEN) {
-            return userTips[user].totalENB;
+            return tips.totalENB;
         } else if (token == CASTFLOW_TOKEN) {
-            return userTips[user].totalCastFlow;
+            return tips.totalCastFlow;
         }
-        return userTips[user].tokenBalances[token];
-    }
-
-    /**
-     * @dev Check if user has claimed from a specific pool
-     */
-    function hasClaimed(uint256 poolId, address user) external view returns (bool) {
-        return tipPools[poolId].hasClaimed[user];
+        
+        return 0;
     }
 
     /**
@@ -229,20 +263,30 @@ contract CastFlowTippingV3 is ReentrancyGuard, Pausable, Ownable {
     }
 
     function pause() external onlyAdmin {
-        _pause();
+        paused = true;
     }
 
     function unpause() external onlyAdmin {
-        _unpause();
+        paused = false;
     }
 
     // Emergency functions
     function emergencyWithdraw(address token, uint256 amount) external onlyOwner {
         if (token == address(0)) {
-            payable(owner()).transfer(amount);
+            (bool success, ) = payable(owner).call{value: amount}("");
+            require(success, "ETH withdrawal failed");
         } else {
-            IERC20(token).safeTransfer(owner(), amount);
+            (bool success, bytes memory data) = token.call(
+                abi.encodeWithSignature("transfer(address,uint256)", owner, amount)
+            );
+            require(success && (data.length == 0 || abi.decode(data, (bool))), "Token withdrawal failed");
         }
+    }
+
+    // Transfer ownership
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Invalid address");
+        owner = newOwner;
     }
 
     receive() external payable {}
