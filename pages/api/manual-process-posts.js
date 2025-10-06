@@ -14,8 +14,18 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Check if NEYNAR_API_KEY exists
+  if (!process.env.NEYNAR_API_KEY) {
+    console.error('❌ NEYNAR_API_KEY not found in environment variables');
+    return res.status(500).json({ 
+      error: 'Neynar API key not configured',
+      message: 'NEYNAR_API_KEY environment variable is missing'
+    });
+  }
+
   try {
     console.log('🕐 Processing scheduled posts manually...');
+    console.log('🔑 NEYNAR_API_KEY status:', process.env.NEYNAR_API_KEY ? 'Present' : 'Missing');
     
     // Get all posts that should be published now
     const now = new Date();

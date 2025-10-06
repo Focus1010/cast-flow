@@ -24,24 +24,65 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       
       if (isConnected && address) {
-        // User has connected wallet - simulate authentication
+        // User has connected wallet - try to fetch Farcaster data
         setAuthenticated(true);
         
-        // For now, create a basic user object
-        // In a real Farcaster mini app, this data would come from the Farcaster frame context
-        const basicUser = {
-          fid: 0, // Will be populated when we get Farcaster context
-          wallet: address,
-          isConnected: isConnected,
-          username: 'User',
-          display_name: 'Connected User',
-          bio: 'Wallet connected user',
-          pfp_url: `https://api.dicebear.com/7.x/identicon/svg?seed=${address}`,
-        };
-        
-        console.log('✅ Wallet connected, basic user created:', basicUser);
-        setUser(basicUser);
-        localStorage.setItem('user', JSON.stringify(basicUser));
+        try {
+          // Try to get user data from Neynar using wallet address
+          console.log('🔍 Fetching user data from Neynar for address:', address);
+          const response = await fetch(`/api/get-user-by-address?address=${address}`);
+          const userData = await response.json();
+          
+          if (userData.success && userData.user) {
+            // Found Farcaster user data
+            const farcasterUser = {
+              fid: userData.user.fid,
+              wallet: address,
+              isConnected: isConnected,
+              username: userData.user.username || 'User',
+              display_name: userData.user.display_name || 'Connected User',
+              bio: userData.user.profile?.bio?.text || 'Farcaster user',
+              pfp_url: userData.user.pfp_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${address}`,
+              follower_count: userData.user.follower_count || 0,
+              following_count: userData.user.following_count || 0,
+              custody_address: userData.user.custody_address || '',
+            };
+            
+            console.log('✅ Farcaster user data found:', farcasterUser);
+            setUser(farcasterUser);
+            localStorage.setItem('user', JSON.stringify(farcasterUser));
+          } else {
+            // No Farcaster data found, create basic user
+            const basicUser = {
+              fid: 0, // No FID found
+              wallet: address,
+              isConnected: isConnected,
+              username: 'User',
+              display_name: 'Connected User',
+              bio: 'Wallet connected user',
+              pfp_url: `https://api.dicebear.com/7.x/identicon/svg?seed=${address}`,
+            };
+            
+            console.log('⚠️ No Farcaster data found, using basic user:', basicUser);
+            setUser(basicUser);
+            localStorage.setItem('user', JSON.stringify(basicUser));
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          // Fallback to basic user
+          const basicUser = {
+            fid: 0,
+            wallet: address,
+            isConnected: isConnected,
+            username: 'User',
+            display_name: 'Connected User',
+            bio: 'Wallet connected user',
+            pfp_url: `https://api.dicebear.com/7.x/identicon/svg?seed=${address}`,
+          };
+          
+          setUser(basicUser);
+          localStorage.setItem('user', JSON.stringify(basicUser));
+        }
       } else {
         // No wallet connected
         setAuthenticated(false);

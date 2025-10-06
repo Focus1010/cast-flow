@@ -17,14 +17,14 @@ export default function PackagesPage() {
     { name: "Elite", price: 20, posts: 60 },
   ]);
 
-  // Read USDC balance
-  const { data: usdcBalance } = useReadContract({
-    address: CONTRACT_ADDRESSES.USDC,
-    abi: ERC20_ABI,
-    functionName: 'balanceOf',
-    args: [address],
-    enabled: !!address,
-  });
+  // USDC balance check temporarily disabled for testing
+  // const { data: usdcBalance } = useReadContract({
+  //   address: CONTRACT_ADDRESSES.USDC,
+  //   abi: ERC20_ABI,
+  //   functionName: 'balanceOf',
+  //   args: [address],
+  //   enabled: !!address,
+  // });
 
   const handleBuy = async (pkg) => {
     if (!authenticated || !user) {
@@ -56,12 +56,9 @@ export default function PackagesPage() {
       
       const priceInUSDC = parseUnits(pkg.price.toString(), 6); // USDC has 6 decimals
       
-      // Check USDC balance
-      if (!usdcBalance || usdcBalance < priceInUSDC) {
-        const balanceFormatted = usdcBalance ? formatUnits(usdcBalance, 6) : '0';
-        return alert(`Insufficient USDC balance. You have ${balanceFormatted} USDC, need ${pkg.price} USDC`);
-      }
-
+      // Balance check disabled for testing
+      console.log('💰 Attempting to purchase package:', pkg.name, 'for', pkg.price, 'USDC');
+      
       setStatus("Approving USDC...");
       
       // First approve USDC spending

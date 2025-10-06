@@ -200,23 +200,32 @@ export default function SchedulerPage() {
     const entry = posts.find(p => p.id === id);
     if (entry) {
       try {
-        const response = await fetch('https://api.neynar.com/v2/farcaster/cast', {
+        console.log('🚀 Posting now for entry:', entry);
+        
+        const response = await fetch('/api/post-now', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'api_key': process.env.NEYNAR_API_KEY,
-            'x-neynar-experimental': 'true'
           },
           body: JSON.stringify({
-            signer_uuid: user.signer_uuid,
-            text: entry.posts.join('\n\n---\n\n')
+            postId: id,
+            signerUuid: user.signer_uuid,
+            text: entry.posts.join('\n\n---\n\n'),
+            images: entry.images || []
           })
         });
-        if (!response.ok) throw new Error(await response.text());
-        alert("Posted now!");
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.message || result.error || 'Failed to post');
+        }
+        
+        alert("✅ Posted successfully!");
         removePost(id);
       } catch (error) {
-        alert("Post failed: " + error.message);
+        console.error('❌ Post now error:', error);
+        alert("❌ Post failed: " + error.message);
       }
     }
   };
