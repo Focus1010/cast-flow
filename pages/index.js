@@ -3,6 +3,7 @@ import { useAccount, useConnect, useDisconnect, useWriteContract } from 'wagmi';
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { createScheduleTransaction } from '../utils/schedulingContract';
+import { checkUnlimitedAccess } from '../utils/tokenGating';
 import { ethers } from 'ethers';
 import ImageUpload from "../components/ImageUpload";
 
@@ -22,6 +23,7 @@ export default function SchedulerPage() {
   const [isInMiniApp, setIsInMiniApp] = useState(false);
   const [connectError, setConnectError] = useState(null);
   const [schedulingOnChain, setSchedulingOnChain] = useState(false);
+  const [accessStatus, setAccessStatus] = useState({ checking: false, hasUnlimited: false, reason: '', tokens: {} });
   const [isLoading, setIsLoading] = useState(true);
   const [schedulingStatus, setSchedulingStatus] = useState('');
 
@@ -112,7 +114,7 @@ export default function SchedulerPage() {
     }
   }, [user]);
 
-  const handleThreadChange = (id, value) => {
+  const handleContentChange = (id, value) => {
     setThread((prev) => prev.map((p) => (p.id === id ? { ...p, content: value } : p)));
   };
 
@@ -120,7 +122,44 @@ export default function SchedulerPage() {
     setThread((prev) => prev.map((p) => (p.id === id ? { ...p, image: imageUrl } : p)));
   };
 
-  const addThreadPost = () => {
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!user || !address) return;
+      
+      setAccessStatus({ checking: true, hasUnlimited: false, reason: '', tokens: {} });
+      
+      try {
+        const accessResult = await checkUnlimitedAccess(address, user.fid);
+        console.log('🔐 Access check result:', accessResult);
+        
+        setAccessStatus({
+          checking: false,
+          hasUnlimited: accessResult.hasAccess,
+          reason: accessResult.reason,
+          message: accessResult.message,
+          tokens: accessResult.tokens || {}
+        });
+        
+        if (accessResult.hasAccess) {
+          setIsUnlimited(true);
+          setLimit(999999); // Effectively unlimited
+        }
+      } catch (error) {
+        console.error('❌ Error checking access:', error);
+        setAccessStatus({ 
+          checking: false, 
+          hasUnlimited: false, 
+          reason: 'error', 
+          message: 'Error checking token access',
+          tokens: {} 
+        });
+      }
+    };
+
+    checkAccess();
+  }, [user, address]);
+
+  const addPost = () => {
     setThread([...thread, { id: Date.now(), content: "", image: null }]);
   };
 
@@ -282,9 +321,50 @@ export default function SchedulerPage() {
         <button className="btn" onClick={login}>Connect Wallet</button>
       ) : (
         <>
-          <div className="tag mb-3">
-            {isUnlimited ? "Unlimited Scheduling" : `Package: ${packageInfo || "Free"} — ${monthlyUsed}/${limit} used this month`}
+          {/* Access Status Display */}
+          <div className="tag mb-3" style={{ 
+            backgroundColor: accessStatus.hasUnlimited ? '#dcfce7' : '#fef3c7',
+            color: accessStatus.hasUnlimited ? '#15803d' : '#92400e',
+            border: `1px solid ${accessStatus.hasUnlimited ? '#16a34a' : '#f59e0b'}`
+          }}>
+            {accessStatus.checking ? (
+              "🔍 Checking token access..."
+            ) : accessStatus.hasUnlimited ? (
+              `✅ ${accessStatus.message || 'Unlimited Access'}`
+            ) : (
+              `📦 Package: ${packageInfo || "Free"} — ${monthlyUsed}/${limit} used this month`
+            )}
           </div>
+
+          {/* Token Holdings Display */}
+          {!accessStatus.checking && !accessStatus.hasUnlimited && Object.keys(accessStatus.tokens).length > 0 && (
+            <div style={{ 
+              marginBottom: "16px", 
+              padding: "12px", 
+              backgroundColor: "#f9fafb", 
+              borderRadius: "6px",
+              border: "1px solid #e5e7eb"
+            }}>
+              <p style={{ margin: "0 0 8px 0", fontSize: "12px", fontWeight: "600", color: "#374151" }}>
+                💰 Token Holdings for Unlimited Access:
+              </p>
+              {Object.entries(accessStatus.tokens).map(([symbol, data]) => (
+                <div key={symbol} style={{ 
+                  display: "flex", 
+                  justifyContent: "space-between", 
+                  fontSize: "11px", 
+                  color: data.hasEnough ? "#059669" : "#dc2626",
+                  marginBottom: "4px"
+                }}>
+                  <span>{symbol}:</span>
+                  <span>{data.balance} / {data.required} {data.hasEnough ? "✅" : "❌"}</span>
+                </div>
+              ))}
+              <p style={{ margin: "8px 0 0 0", fontSize: "10px", color: "#6b7280" }}>
+                Hold the required amount of any token above for unlimited scheduling
+              </p>
+            </div>
+          )}
 
           {thread.map((p, idx) => (
             <div key={p.id} style={{ marginBottom: "16px", padding: "12px", border: "1px solid #e5e5e5", borderRadius: "8px" }}>
