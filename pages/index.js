@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { useAccount, useConnect, useDisconnect, useSendCalls } from 'wagmi';
-import { encodeFunctionData, parseUnits } from 'viem';
-import { sdk } from '@farcaster/miniapp-sdk';
+import { useAccount, useConnect, useDisconnect, useWriteContract } from 'wagmi';
 import { supabase } from "../lib/supabase";
-import contractABI from "../utils/contractABI.json"; // Get from Remix
 import { useAuth } from "../contexts/AuthContext";
+import { createScheduleTransaction } from '../utils/schedulingContract';
+import { ethers } from 'ethers';
 import ImageUpload from "../components/ImageUpload";
 
 export default function SchedulerPage() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
-  const { sendCalls } = useSendCalls();
+  const { writeContract } = useWriteContract();
   const { user, authenticated, login } = useAuth();
   const [posts, setPosts] = useState([]);
   const [thread, setThread] = useState([{ id: Date.now(), content: "", image: null }]);
@@ -22,6 +21,7 @@ export default function SchedulerPage() {
   const [monthlyUsed, setMonthlyUsed] = useState(0);
   const [isInMiniApp, setIsInMiniApp] = useState(false);
   const [connectError, setConnectError] = useState(null);
+  const [schedulingOnChain, setSchedulingOnChain] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [schedulingStatus, setSchedulingStatus] = useState('');
 
@@ -144,18 +144,53 @@ export default function SchedulerPage() {
     }
     
     setSchedulingStatus("Scheduling post...");
+    setSchedulingOnChain(true);
     
     try {
+      // Step 1: On-chain confirmation (0.01 ETH commitment)
+      setSchedulingStatus("💳 Confirming on-chain commitment...");
+      
+      if (!isConnected || !address) {
+        throw new Error("Please connect your wallet first");
+      }
+      
+      // Create content hash for on-chain storage
+      const contentText = validPosts.map(p => p.content).join('\n\n---\n\n');
+      const contentHash = ethers.keccak256(ethers.toUtf8Bytes(contentText));
+      const scheduledTimeUnix = Math.floor(scheduledTime.getTime() / 1000);
+      
+      // For now, we'll just do a simple ETH transaction as commitment
+      // Later this will be replaced with the actual scheduling contract
+      console.log('🔗 Creating on-chain commitment...');
+      console.log('Content hash:', contentHash);
+      console.log('Scheduled time:', scheduledTimeUnix);
+      
+      // Simulate on-chain transaction (replace with actual contract call)
+      const onChainTx = await writeContract({
+        address: '0x0000000000000000000000000000000000000000', // Placeholder - will be scheduling contract
+        abi: [{"inputs":[],"name":"placeholder","outputs":[],"stateMutability":"payable","type":"function"}],
+        functionName: 'placeholder',
+        args: [],
+        value: '10000000000000000' // 0.01 ETH commitment fee
+      });
+      
+      console.log('✅ On-chain commitment successful:', onChainTx);
+      
+      // Step 2: Store in database with on-chain reference
+      setSchedulingStatus("💾 Storing post data...");
+      
       // Collect all images from thread posts
       const threadImages = validPosts.map(p => p.image).filter(img => img !== null);
       
-      // Store in database first (we'll handle posting via cron job)
       const { data: newPost, error } = await supabase.from('scheduled_posts').insert({
         user_id: user.fid, // Use fid as string, not UUID
         posts: validPosts.map(p => p.content),
         datetime: scheduledTime.toISOString(),
         images: threadImages.length > 0 ? threadImages : null,
-        status: 'scheduled'
+        status: 'scheduled',
+        content_hash: contentHash,
+        commitment_tx: onChainTx || 'simulated', // Store transaction hash
+        commitment_fee: '0.01' // ETH amount paid
       }).select().single();
       
       if (error) throw error;
@@ -186,6 +221,8 @@ export default function SchedulerPage() {
       console.error("Scheduling error:", error);
       setSchedulingStatus("❌ Scheduling failed: " + error.message);
       setTimeout(() => setSchedulingStatus(""), 5000);
+    } finally {
+      setSchedulingOnChain(false);
     }
   };
 

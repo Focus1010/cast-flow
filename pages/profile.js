@@ -19,6 +19,7 @@ export default function ProfilePage() {
   const [error, setError] = useState('');
   const [manualFid, setManualFid] = useState('');
   const [loadingManualFid, setLoadingManualFid] = useState(false);
+  const [signerSetup, setSignerSetup] = useState({ loading: false, approvalUrl: null });
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -248,6 +249,45 @@ export default function ProfilePage() {
       setLoadingManualFid(false);
     }
   };
+
+  const handleCreateSigner = async () => {
+    if (!user?.fid || user.fid === 0) {
+      alert('Please load your Farcaster profile first');
+      return;
+    }
+
+    setSignerSetup({ loading: true, approvalUrl: null });
+    
+    try {
+      const response = await fetch('/api/create-signer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fid: user.fid
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setSignerSetup({ 
+          loading: false, 
+          approvalUrl: result.approval_url,
+          signerUuid: result.signer_uuid
+        });
+        
+        alert('Signer created! Please approve it using the link that will appear below.');
+      } else {
+        throw new Error(result.message || result.error);
+      }
+    } catch (error) {
+      console.error('Error creating signer:', error);
+      alert('Failed to create signer: ' + error.message);
+      setSignerSetup({ loading: false, approvalUrl: null });
+    }
+  };
   
   if (error) return <div className="card"><p className="small">{error}</p></div>;
 
@@ -345,6 +385,78 @@ export default function ProfilePage() {
             </div>
             <p style={{ margin: "8px 0 0 0", fontSize: "10px", color: "#92400e" }}>
               Find your FID at <a href="https://warpcast.com/~/settings" target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b" }}>warpcast.com/~/settings</a>
+            </p>
+          </div>
+        )}
+
+        {/* Signer Setup Section */}
+        {user?.fid && user.fid > 0 && !user?.signer_uuid && (
+          <div style={{ 
+            marginTop: "16px", 
+            padding: "12px", 
+            backgroundColor: "#dbeafe", 
+            borderRadius: "6px",
+            border: "1px solid #3b82f6"
+          }}>
+            <p style={{ margin: "0 0 8px 0", fontSize: "12px", color: "#1e40af" }}>
+              🔑 Setup posting permissions to enable scheduled posts:
+            </p>
+            <button
+              onClick={handleCreateSigner}
+              disabled={signerSetup.loading}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: signerSetup.loading ? "#ccc" : "#3b82f6",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                fontSize: "12px",
+                cursor: signerSetup.loading ? "not-allowed" : "pointer",
+                marginBottom: signerSetup.approvalUrl ? "8px" : "0"
+              }}
+            >
+              {signerSetup.loading ? "Creating Signer..." : "🔑 Setup Posting Permissions"}
+            </button>
+            
+            {signerSetup.approvalUrl && (
+              <div style={{ marginTop: "8px" }}>
+                <p style={{ margin: "0 0 4px 0", fontSize: "11px", color: "#1e40af" }}>
+                  ✅ Signer created! Click below to approve:
+                </p>
+                <a 
+                  href={signerSetup.approvalUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-block",
+                    padding: "6px 12px",
+                    backgroundColor: "#10b981",
+                    color: "white",
+                    textDecoration: "none",
+                    borderRadius: "4px",
+                    fontSize: "11px"
+                  }}
+                >
+                  🚀 Approve Signer
+                </a>
+                <p style={{ margin: "4px 0 0 0", fontSize: "10px", color: "#1e40af" }}>
+                  After approval, refresh this page to enable posting.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {user?.signer_uuid && (
+          <div style={{ 
+            marginTop: "16px", 
+            padding: "12px", 
+            backgroundColor: "#dcfce7", 
+            borderRadius: "6px",
+            border: "1px solid #16a34a"
+          }}>
+            <p style={{ margin: "0", fontSize: "12px", color: "#15803d" }}>
+              ✅ Posting permissions active! You can now schedule and post casts.
             </p>
           </div>
         )}
