@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 
 const AuthContext = createContext();
 
@@ -13,6 +13,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const { login, logout, authenticated, user: privyUser } = usePrivy();
+  const { wallets } = useWallets();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -64,9 +65,22 @@ export const AuthProvider = ({ children }) => {
                 console.log('⚠️ No verified addresses, using custody address:', primaryWallet);
               }
               
+              // Get Privy embedded wallet address
+              let embeddedWalletAddress = '';
+              try {
+                const embeddedWallet = wallets.find(wallet => wallet.walletClientType === 'privy');
+                if (embeddedWallet) {
+                  embeddedWalletAddress = embeddedWallet.address;
+                  console.log('🔗 Privy embedded wallet:', embeddedWalletAddress);
+                }
+              } catch (error) {
+                console.log('No embedded wallet found:', error.message);
+              }
+
               const newUser = {
                 fid: fid,
-                wallet: primaryWallet,
+                wallet: embeddedWalletAddress || primaryWallet, // Prefer embedded wallet
+                farcaster_wallet: primaryWallet, // Keep Farcaster wallet for reference
                 custody_address: userData.user.custody_address || '',
                 signer_uuid: privyUser.farcaster?.signerUuid || '',
                 is_admin: fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID),

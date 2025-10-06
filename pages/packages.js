@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from '../contexts/AuthContext';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { supabase } from '../lib/supabase';
 import { TIPPING_CONTRACT_ABI, ERC20_ABI, CONTRACT_ADDRESSES } from '../utils/contractABI';
 
 export default function PackagesPage() {
   const { user, authenticated, login } = useAuth();
+  const { wallets } = useWallets();
   const [status, setStatus] = useState("");
   const [packages, setPackages] = useState([
     { name: "Starter", price: 5, posts: 15 },
@@ -18,40 +20,25 @@ export default function PackagesPage() {
       return alert("Please connect your Farcaster account first.");
     }
     
-    if (!user.wallet) {
-      return alert("No wallet address found in your Farcaster account. Please make sure you have a verified wallet address.");
+    // Get Privy embedded wallet
+    const embeddedWallet = wallets.find(wallet => wallet.walletClientType === 'privy');
+    if (!embeddedWallet) {
+      return alert("Embedded wallet not found. Please try refreshing the app.");
     }
 
-    // For Farcaster mini app, we need to use the user's connected wallet
-    // This will prompt them to connect their wallet if not already connected
-    if (!window.ethereum) {
-      return alert("Please open this app in a wallet-enabled browser or connect your wallet.");
-    }
-
-    // Request wallet connection
-    try {
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-      
-      // Verify the connected wallet matches the user's Farcaster wallet
-      const { ethers } = await import('ethers');
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const connectedAddress = await signer.getAddress();
-      
-      console.log('Connected wallet:', connectedAddress);
-      console.log('Farcaster wallet:', user.wallet);
-      
-      // Allow transaction even if addresses don't match (user might have multiple wallets)
-    } catch (error) {
-      return alert("Please connect your wallet to continue with the purchase.");
-    }
-    
-    setStatus("Processing purchase...");
+    setStatus("Connecting to wallet...");
     
     try {
-      // Connect to user's wallet
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      // Connect to Privy embedded wallet
+      await embeddedWallet.connect();
+      
+      // Get provider from Privy wallet
+      const provider = await embeddedWallet.getEthereumProvider();
+      const ethersProvider = new ethers.BrowserProvider(provider);
+      const signer = await ethersProvider.getSigner();
+      
+      console.log('✅ Connected to Privy embedded wallet');
+      console.log('Wallet address:', await signer.getAddress());
       
       // Use the new tipping contract
       const contractAddress = CONTRACT_ADDRESSES.TIPPING_CONTRACT;

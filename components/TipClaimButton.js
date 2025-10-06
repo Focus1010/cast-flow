@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
-import { TIPPING_CONTRACT_ABI, CONTRACT_ADDRESSES, CONTRACT_HELPERS } from '../utils/contractABI';
+import { TIPPING_CONTRACT_ABI, CONTRACT_ADDRESSES } from '../utils/contractABI';
 
 export default function TipClaimButton({ user, postId, onTipClaimed }) {
   const [loading, setLoading] = useState(false);
   const [tipPool, setTipPool] = useState(null);
   const [hasClaimed, setHasClaimed] = useState(false);
-  const [canClaim, setCanClaim] = useState(false);
+  const { wallets } = useWallets();
 
   useEffect(() => {
     if (user && postId) {
@@ -16,13 +17,16 @@ export default function TipClaimButton({ user, postId, onTipClaimed }) {
 
   const loadTipPoolInfo = async () => {
     try {
-      if (!window.ethereum) return;
+      // Get Privy embedded wallet
+      const embeddedWallet = wallets.find(wallet => wallet.walletClientType === 'privy');
+      if (!embeddedWallet) return;
       
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = await embeddedWallet.getEthereumProvider();
+      const ethersProvider = new ethers.BrowserProvider(provider);
       const contract = new ethers.Contract(
         CONTRACT_ADDRESSES.TIPPING_CONTRACT,
         TIPPING_CONTRACT_ABI,
-        provider
+        ethersProvider
       );
 
       const formattedPostId = CONTRACT_HELPERS.formatPostId(postId);
