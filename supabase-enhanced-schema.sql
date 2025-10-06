@@ -10,7 +10,7 @@ ADD COLUMN IF NOT EXISTS on_chain_post_id BIGINT;
 -- Create tip_pools table for managing tip configurations per post
 CREATE TABLE IF NOT EXISTS tip_pools (
   id BIGSERIAL PRIMARY KEY,
-  post_id BIGINT REFERENCES scheduled_posts(id) ON DELETE CASCADE,
+  post_id INTEGER REFERENCES scheduled_posts(id) ON DELETE CASCADE,
   creator_fid TEXT NOT NULL,
   token_address TEXT NOT NULL,
   token_symbol TEXT NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS tip_pools (
 -- Create interactions table for tracking user engagement
 CREATE TABLE IF NOT EXISTS post_interactions (
   id BIGSERIAL PRIMARY KEY,
-  post_id BIGINT REFERENCES scheduled_posts(id) ON DELETE CASCADE,
+  post_id INTEGER REFERENCES scheduled_posts(id) ON DELETE CASCADE,
   cast_hash TEXT NOT NULL,
   user_fid TEXT NOT NULL,
   user_address TEXT,
@@ -95,7 +95,7 @@ CREATE POLICY "Users can manage their own tip pools" ON tip_pools
 
 CREATE POLICY "Users can view interactions on their posts" ON post_interactions
   FOR SELECT USING (
-    post_id IN (SELECT id FROM scheduled_posts WHERE user_id = current_setting('app.current_user_fid', true))
+    post_id IN (SELECT id FROM scheduled_posts WHERE user_id::text = current_setting('app.current_user_fid', true))
     OR user_fid = current_setting('app.current_user_fid', true)
   );
 
