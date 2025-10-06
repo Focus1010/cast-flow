@@ -34,9 +34,17 @@ export default function SchedulerPage() {
         // Check if we're in a Farcaster mini app environment
         const isMini = typeof window !== 'undefined' && 
                       (window.location.href.includes('warpcast.com') || 
-                       window.parent !== window);
+                       window.parent !== window ||
+                       window.location.href.includes('farcaster'));
         setIsInMiniApp(isMini);
         console.log('🔍 Mini app detected:', isMini);
+        
+        // Add frame-specific error handling
+        if (isMini && typeof window !== 'undefined') {
+          window.addEventListener('message', (event) => {
+            console.log('Frame message received:', event.data);
+          });
+        }
       } catch (error) {
         console.error("Mini app init error:", error);
         setIsInMiniApp(false);
