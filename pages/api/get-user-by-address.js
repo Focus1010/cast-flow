@@ -82,31 +82,22 @@ export default async function handler(req, res) {
     const data = await response.json();
     console.log('📊 Bulk API response:', data);
     
-    if (data && Object.keys(data).length > 0) {
-      // The bulk endpoint returns an object with address as key
-      const userData = data[address.toLowerCase()] || data[address];
-      
-      if (userData && userData.length > 0) {
-        console.log('✅ Found Farcaster user via bulk API for address:', address);
-        return res.status(200).json({
-          success: true,
-          user: userData[0] // Take the first user
-        });
-      }
+    if (data && data[address] && data[address].length > 0) {
+      const user = data[address][0];
+      return res.status(200).json({ success: true, user });
+    } else {
+      return res.status(200).json({ 
+        success: false, 
+        error: 'User not found',
+        fallback: true 
+      });
     }
-
-    // No user found with this address
-    console.log('⚠️ No Farcaster user found for address:', address);
-    return res.status(200).json({
-      success: false,
-      message: 'No Farcaster user found for this address'
-    });
-
   } catch (error) {
-    console.error('❌ Error fetching user by address:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error'
+    console.error('Error fetching user:', error);
+    return res.status(200).json({ 
+      success: false, 
+      error: 'Internal server error',
+      fallback: true 
     });
   }
 }
