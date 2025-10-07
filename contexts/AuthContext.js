@@ -16,7 +16,7 @@ export const AuthProvider = ({ children }) => {
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {

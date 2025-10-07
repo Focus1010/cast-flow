@@ -28,32 +28,21 @@ export default function SchedulerPage() {
 
   // Mini app init - check if running in Farcaster
   useEffect(() => {
-    const initMiniApp = async () => {
-      setIsLoading(true);
-      try {
-        // Check if we're in a Farcaster mini app environment
-        const isMini = typeof window !== 'undefined' && 
-                      (window.location.href.includes('warpcast.com') || 
-                       window.parent !== window ||
-                       window.navigator.userAgent.includes('Farcaster'));
-        
-        setIsInMiniApp(isMini);
-        
-        if (isMini) {
-          console.log('🔄 Running in Farcaster mini app mode');
-          // Add mini app specific styling
-          document.body.style.margin = '0';
-          document.body.style.padding = '10px';
-          document.body.style.backgroundColor = '#0f172a';
-        }
-      } catch (error) {
-        console.error('Mini app init error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initMiniApp();
+    // Check if we're in a Farcaster mini app environment
+    const isMini = typeof window !== 'undefined' && 
+                  (window.location.href.includes('warpcast.com') || 
+                   window.parent !== window ||
+                   window.navigator.userAgent.includes('Farcaster'));
+    
+    setIsInMiniApp(isMini);
+    
+    if (isMini) {
+      console.log('🔄 Running in Farcaster mini app mode');
+      // Add mini app specific styling
+      document.body.style.margin = '0';
+      document.body.style.padding = '10px';
+      document.body.style.backgroundColor = '#0f172a';
+    }
   }, []);
 
   // Load posts when user connects
@@ -259,19 +248,6 @@ export default function SchedulerPage() {
     );
   };
 
-  if (isLoading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '50vh',
-        color: 'white' 
-      }}>
-        Loading...
-      </div>
-    );
-  }
 
   return (
     <div className="scheduler-container" style={{ 
