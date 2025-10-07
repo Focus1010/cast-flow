@@ -8,7 +8,7 @@
     "version": "1",
     "name": "Cast Flow",
     "iconUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
-    "homeUrl": "https://cast-flow-app.vercel.app/mini",
+    "homeUrl": "https://cast-flow-app.vercel.app",
     "imageUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
     "buttonTitle": "Open Cast Flow",
     "splashImageUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
