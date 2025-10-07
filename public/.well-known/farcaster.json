@@ -1,20 +1,21 @@
 {
-  "frame": {
-    "name": "Cast Flow",
-    "version": "1",
-    "iconUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
-    "homeUrl": "https://cast-flow-app.vercel.app",
-    "imageUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
-    "splashImageUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
-    "splashBackgroundColor": "#0f172a",
-    "webhookUrl": "https://cast-flow-app.vercel.app/api/webhook",
-    "subtitle": "Schedule casts and reward your followers with micro-tips",
-    "primaryCategory": "social",
-    "description": "Schedule your Farcaster posts and automatically reward followers with token tips"
-  },
   "accountAssociation": {
     "header": "eyJmaWQiOjEwNTE5MDAsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHgzZUE4OTVhODZhRmQxNzAwRjYzNTM2RkEyMWMwMjBCMGEzMjEzM0U5In0",
     "payload": "eyJkb21haW4iOiJjYXN0LWZsb3ctYXBwLnZlcmNlbC5hcHAifQ",
     "signature": "MHg1YWJmMGEyMjJiNWIxZDhjN2MzMzJiM2Y2MzU0Y2JjYWJmOGFmZjA5OTAwZjNhY2Q3MjczOWUyODc3ZDI5YWIwMmZlMGE4ZDQyYjdlY2M4ZWNmZDQ1MzM0N2JmNjg2ZmQ4Y2YyMWViYjMzNTM0OTNiZjg2MGZmMmU5YTI0MTFlMjFi"
+  },
+  "frame": {
+    "version": "1",
+    "name": "Cast Flow",
+    "iconUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
+    "homeUrl": "https://cast-flow-app.vercel.app",
+    "imageUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
+    "buttonTitle": "Open Cast Flow",
+    "splashImageUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
+    "splashBackgroundColor": "#0f172a",
+    "webhookUrl": "https://cast-flow-app.vercel.app/api/webhook",
+    "subtitle": "Schedule casts and reward followers",
+    "primaryCategory": "social",
+    "description": "Schedule your Farcaster posts and reward followers with token tips"
   }
 }

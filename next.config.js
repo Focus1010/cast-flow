@@ -14,7 +14,7 @@ module.exports = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; connect-src 'self' https: wss:; frame-ancestors 'self' https://*.farcaster.xyz https://*.warpcast.com https://warpcast.com;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; connect-src 'self' https: wss: https://*.walletconnect.com https://*.mypinata.cloud https://*.decentralized-content.com https://*.quicknode.com https://*.pinata.cloud https://ipfs.io https://imagedelivery.net; frame-ancestors 'self' https://*.farcaster.xyz https://*.warpcast.com https://warpcast.com https://cast-flow-app.vercel.app;",
           },
         ],
       },

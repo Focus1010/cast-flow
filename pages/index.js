@@ -389,6 +389,8 @@ export default function SchedulerPage() {
                 Post {idx + 1}
               </label>
               <textarea
+                id={`post-content-${p.id}`}
+                name={`post-content-${p.id}`}
                 className="input"
                 placeholder={`Write your post content...`}
                 value={p.content}
@@ -433,6 +435,7 @@ export default function SchedulerPage() {
             </label>
             <input
               id="datetime"
+              name="datetime"
               type="datetime-local"
               className="datetime-input"
               value={datetime}
