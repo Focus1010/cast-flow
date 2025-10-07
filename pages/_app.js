@@ -16,7 +16,11 @@ const config = createConfig({
   chains: [base],
   transports: { [base.id]: http() },
   connectors: [
-    farcasterMiniApp(),
+    farcasterMiniApp({
+      relay: 'https://relay.farcaster.xyz',
+      rpcUrl: 'https://mainnet.base.org',
+      domain: 'cast-flow-app.vercel.app'
+    }),
     coinbaseWallet({
       appName: 'Cast Flow',
       appLogoUrl: 'https://cast-flow-app.vercel.app/icon.png',

@@ -1,0 +1,6 @@
+<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="400" fill="#0f172a"/>
+  <text x="200" y="180" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle">🔄 Cast Flow</text>
+  <text x="200" y="220" font-family="Arial, sans-serif" font-size="16" fill="#94a3b8" text-anchor="middle">Schedule Your Casts</text>
+  <text x="200" y="260" font-family="Arial, sans-serif" font-size="14" fill="#64748b" text-anchor="middle">Reward Your Followers</text>
+</svg>

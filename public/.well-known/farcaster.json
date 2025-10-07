@@ -2,15 +2,15 @@
   "frame": {
     "name": "Cast Flow",
     "version": "1",
-    "iconUrl": "https://ibb.co/7J5zdfq2",
+    "iconUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
     "homeUrl": "https://cast-flow-app.vercel.app",
-    "imageUrl": "https://cast-flow-app.vercel.app/image.png",
-    "splashImageUrl": "https://ibb.co/7J5zdfq2",
+    "imageUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
+    "splashImageUrl": "https://cast-flow-app.vercel.app/frame-image.svg",
     "splashBackgroundColor": "#0f172a",
     "webhookUrl": "https://cast-flow-app.vercel.app/api/webhook",
-    "subtitle": "Schedule a cast for whenever you want it to go live, and reward your followers ",
+    "subtitle": "Schedule casts and reward your followers with micro-tips",
     "primaryCategory": "social",
-    "description": "Experience Social growth while building solid connection with your follwers"
+    "description": "Schedule your Farcaster posts and automatically reward followers with token tips"
   },
   "accountAssociation": {
     "header": "eyJmaWQiOjEwNTE5MDAsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHgzZUE4OTVhODZhRmQxNzAwRjYzNTM2RkEyMWMwMjBCMGEzMjEzM0U5In0",
