@@ -14,9 +14,12 @@ export default async function handler(req, res) {
     
     if (!neynarApiKey) {
       console.error('❌ NEYNAR_API_KEY not found in environment variables');
-      return res.status(500).json({ 
+      // Return a fallback response instead of error to prevent app hanging
+      return res.status(200).json({ 
         success: false, 
-        error: 'Neynar API key not configured' 
+        error: 'Neynar API key not configured',
+        fallback: true,
+        user: null
       });
     }
 

@@ -29,7 +29,10 @@ export default function MyApp({ Component, pageProps }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    // Set mounted immediately to prevent loading screen hang
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 100);
     
     // Handle mini-app specific initialization
     if (typeof window !== 'undefined') {
@@ -52,6 +55,8 @@ export default function MyApp({ Component, pageProps }) {
         event.preventDefault();
       });
     }
+
+    return () => clearTimeout(timer);
   }, []);
 
   if (!mounted) {

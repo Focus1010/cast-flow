@@ -28,9 +28,21 @@ export const AuthProvider = ({ children }) => {
         setAuthenticated(true);
         
         try {
-          // Try to get user data from Neynar using wallet address
+          // Try to get user data from Neynar using wallet address with timeout
           console.log('🔍 Fetching user data from Neynar for address:', address);
-          const response = await fetch(`/api/get-user-by-address?address=${address}`);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+          
+          const response = await fetch(`/api/get-user-by-address?address=${address}`, {
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            throw new Error(`API request failed: ${response.status}`);
+          }
+          
           const userData = await response.json();
           
           console.log('📊 Neynar API response:', userData);
