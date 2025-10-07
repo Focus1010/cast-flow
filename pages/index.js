@@ -170,8 +170,18 @@ export default function SchedulerPage() {
     checkAccess();
   }, [user, address]);
 
-  const addPost = () => {
-    setThread([...thread, { id: Date.now(), content: "", image: null }]);
+  // Add thread post function
+  const addThreadPost = () => {
+    if (!isUnlimited && monthlyUsed >= limit) {
+      alert("You've reached your monthly limit. Upgrade to add more posts.");
+      return;
+    }
+    
+    setThread([...thread, { 
+      id: Date.now(), 
+      content: "", 
+      image: null 
+    }]);
   };
 
   const deleteThreadPost = (id) => {
