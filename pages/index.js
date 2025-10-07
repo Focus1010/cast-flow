@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Head from 'next/head';
 import { useAccount, useConnect, useDisconnect, useWriteContract } from 'wagmi';
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
@@ -250,11 +251,30 @@ export default function SchedulerPage() {
 
 
   return (
-    <div className="scheduler-container" style={{ 
-      maxWidth: isInMiniApp ? '100%' : '800px',
-      margin: '0 auto',
-      padding: isInMiniApp ? '10px' : '20px'
-    }}>
+    <>
+      <Head>
+        <title>Cast Flow - Schedule Your Farcaster Posts</title>
+        <meta name="description" content="Schedule your Farcaster posts and reward followers with token tips" />
+        
+        {/* Farcaster Frame Meta Tags */}
+        <meta property="fc:frame" content="vNext" />
+        <meta property="fc:frame:image" content="https://cast-flow-app.vercel.app/frame-image.svg" />
+        <meta property="fc:frame:button:1" content="Open Cast Flow" />
+        <meta property="fc:frame:button:1:action" content="link" />
+        <meta property="fc:frame:button:1:target" content="https://cast-flow-app.vercel.app" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Cast Flow - Schedule Your Farcaster Posts" />
+        <meta property="og:description" content="Schedule your Farcaster posts and reward followers with token tips" />
+        <meta property="og:image" content="https://cast-flow-app.vercel.app/frame-image.svg" />
+        <meta property="og:url" content="https://cast-flow-app.vercel.app" />
+      </Head>
+      
+      <div className="scheduler-container" style={{ 
+        maxWidth: isInMiniApp ? '100%' : '800px',
+        margin: '0 auto',
+        padding: isInMiniApp ? '10px' : '20px'
+      }}>
       <div className="scheduler-header">
         <h2>🔄 Schedule Your Casts</h2>
         {isInMiniApp && (
@@ -431,6 +451,7 @@ export default function SchedulerPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
