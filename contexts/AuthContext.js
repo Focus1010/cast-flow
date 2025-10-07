@@ -131,11 +131,35 @@ export const AuthProvider = ({ children }) => {
           const availableConnector = connectors[0];
           if (availableConnector) {
             await connect({ connector: availableConnector });
+          } else {
+            console.warn('No wallet connectors available');
+            // Set basic authenticated state even without wallet
+            setAuthenticated(true);
+            setUser({
+              fid: 0,
+              wallet: null,
+              isConnected: false,
+              username: 'Guest',
+              display_name: 'Guest User',
+              bio: 'Guest user',
+              pfp_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=guest',
+            });
           }
         }
       }
     } catch (error) {
       console.error('Login failed:', error);
+      // Don't let login failures crash the app
+      setAuthenticated(true);
+      setUser({
+        fid: 0,
+        wallet: null,
+        isConnected: false,
+        username: 'Guest',
+        display_name: 'Guest User',
+        bio: 'Connection failed',
+        pfp_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=error',
+      });
     }
   };
 

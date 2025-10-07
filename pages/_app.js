@@ -20,16 +20,40 @@ const config = createConfig({
       relay: 'https://relay.farcaster.xyz',
       rpcUrl: 'https://mainnet.base.org',
       domain: 'cast-flow-app.vercel.app'
-    }),
-    coinbaseWallet({
-      appName: 'Cast Flow',
-      appLogoUrl: 'https://cast-flow-app.vercel.app/icon.png',
-    }),
-    injected({ shimDisconnect: true })
+    })
   ]
 });
 
 export default function MyApp({ Component, pageProps }) {
+  useEffect(() => {
+    // Prevent wallet conflicts
+    if (typeof window !== 'undefined') {
+      // Handle ethereum provider conflicts gracefully
+      const handleError = (event) => {
+        if (event.error?.message?.includes('ethereum') || 
+            event.error?.message?.includes('Cannot redefine property')) {
+          console.warn('Wallet provider conflict detected, continuing...');
+          event.preventDefault();
+          return false;
+        }
+      };
+      
+      window.addEventListener('error', handleError);
+      window.addEventListener('unhandledrejection', (event) => {
+        if (event.reason?.message?.includes('ethereum') ||
+            event.reason?.message?.includes('Cannot redefine property')) {
+          console.warn('Wallet provider promise rejection, continuing...');
+          event.preventDefault();
+          return false;
+        }
+      });
+      
+      return () => {
+        window.removeEventListener('error', handleError);
+      };
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <WagmiProvider config={config}>
