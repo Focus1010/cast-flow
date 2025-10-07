@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
           console.log('🔍 Fetching user data from Neynar for address:', address);
           
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+          const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
           
           const response = await fetch(`/api/get-user-by-address?address=${address}`, {
             signal: controller.signal

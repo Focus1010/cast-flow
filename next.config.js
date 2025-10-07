@@ -1,7 +1,11 @@
 module.exports = {
   reactStrictMode: false, // Disable strict mode for frame compatibility
+  swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  experimental: {
+    esmExternals: false,
   },
   async headers() {
     return [

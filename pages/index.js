@@ -23,7 +23,7 @@ export default function SchedulerPage() {
   const [isInMiniApp, setIsInMiniApp] = useState(false);
   const [schedulingOnChain, setSchedulingOnChain] = useState(false);
   const [accessStatus, setAccessStatus] = useState({ checking: false, hasUnlimited: false, reason: '', tokens: {} });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [schedulingStatus, setSchedulingStatus] = useState('');
 
   // Mini app init - check if running in Farcaster
