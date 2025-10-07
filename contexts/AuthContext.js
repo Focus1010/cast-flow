@@ -23,9 +23,10 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       setLoading(true);
       
-      if (isConnected && address) {
-        // User has connected wallet - try to fetch Farcaster data
-        setAuthenticated(true);
+      try {
+        if (isConnected && address) {
+          // User has connected wallet - try to fetch Farcaster data
+          setAuthenticated(true);
         
         try {
           // Try to get user data from Neynar using wallet address with timeout
@@ -97,17 +98,22 @@ export const AuthProvider = ({ children }) => {
           setUser(basicUser);
           localStorage.setItem('user', JSON.stringify(basicUser));
         }
-      } else {
-        // No wallet connected
-        setAuthenticated(false);
-        const storedUser = localStorage.getItem('user');
-        if (storedUser && !isConnected) {
-          localStorage.removeItem('user');
-          setUser(null);
+        } else {
+          // No wallet connected
+          setAuthenticated(false);
+          const storedUser = localStorage.getItem('user');
+          if (storedUser && !isConnected) {
+            localStorage.removeItem('user');
+            setUser(null);
+          }
         }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setAuthenticated(false);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     initializeAuth();

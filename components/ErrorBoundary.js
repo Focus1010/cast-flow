@@ -16,6 +16,7 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      console.error('ErrorBoundary caught error:', this.state.error);
       return (
         <div style={{
           display: 'flex',
@@ -30,6 +31,9 @@ class ErrorBoundary extends React.Component {
         }}>
           <h2>🔧 Cast Flow Loading...</h2>
           <p>Initializing your scheduling experience</p>
+          <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px' }}>
+            Error: {this.state.error?.message || 'Unknown error'}
+          </p>
           <button 
             onClick={() => window.location.reload()}
             style={{

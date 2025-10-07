@@ -75,16 +75,16 @@ export default function MyApp({ Component, pageProps }) {
   }
 
   return (
-    <ErrorBoundary>
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
           <AuthProvider>
             <Layout>
               <Component {...pageProps} />
             </Layout>
           </AuthProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
-    </ErrorBoundary>
+        </ErrorBoundary>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
