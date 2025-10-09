@@ -10,6 +10,7 @@ import { base } from 'wagmi/chains';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
 import { AuthProvider } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
+import { initializeFarcasterSDK } from '../lib/farcaster';
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,13 @@ export default function MyApp({ Component, pageProps }) {
     };
     
     checkMobile();
+    
+    // Initialize Farcaster SDK early
+    initializeFarcasterSDK().then(() => {
+      console.log('Farcaster SDK initialized in _app.js');
+    }).catch(error => {
+      console.warn('Farcaster SDK initialization failed:', error);
+    });
     
     // Prevent wallet conflicts
     if (typeof window !== 'undefined') {

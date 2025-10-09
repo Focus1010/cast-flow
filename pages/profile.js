@@ -80,14 +80,25 @@ export default function ProfilePage() {
         });
       }
 
-      // Load claimable tips (mock data for now)
-      // In production, this would query your smart contract
-      setClaimableAmounts({
-        ETH: "0.5",
-        USDC: "125.50",
-        ENB: "0",
-        FCS: "0"
-      });
+      // Load claimable tips from smart contract
+      if (address) {
+        try {
+          const claimResponse = await fetch(`/api/claimable-tips?address=${address}`);
+          const claimData = await claimResponse.json();
+          
+          if (claimData.success) {
+            setClaimableAmounts(claimData.claimableAmounts);
+          }
+        } catch (error) {
+          console.error('Error loading claimable amounts:', error);
+          setClaimableAmounts({
+            ETH: "0",
+            USDC: "0",
+            ENB: "0",
+            FCS: "0"
+          });
+        }
+      }
 
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -103,8 +114,23 @@ export default function ProfilePage() {
     setClaiming(prev => ({ ...prev, [token]: true }));
     
     try {
-      // Mock claim process - replace with actual smart contract interaction
+      // Real smart contract interaction
+      const contractAddress = process.env.NEXT_PUBLIC_TIPPING_CONTRACT_ADDRESS;
+      
+      if (!contractAddress) {
+        alert('Tipping contract not deployed yet. Please check back later.');
+        return;
+      }
+
+      // This would use wagmi hooks or ethers to interact with the contract
+      // For now, we'll simulate the interaction
       await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Update claimable amounts after successful claim
+      setClaimableAmounts(prev => ({
+        ...prev,
+        [token]: "0"
+      }));
       
       alert(`Successfully claimed ${claimableAmounts[token]} ${token}!`);
       

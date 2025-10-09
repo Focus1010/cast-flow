@@ -69,26 +69,38 @@ export default function TipsPage() {
     return `${total.toFixed(3)} ${selectedToken} (~$${usdTotal.toFixed(2)})`;
   };
 
-  // Mock scheduled posts
+  // Load real data from database
   useEffect(() => {
-    if (user) {
-      // Load real posts from database
-      supabase.from('scheduled_posts').select('*').eq('user_id', user.fid).then(({ data }) => {
-        setPosts(data || []);
-      });
-      
-      // Load active tip configurations
-      supabase.from('tip_pools').select('*').eq('creator_fid', user.fid.toString()).then(({ data }) => {
-        setActiveTips(data || []);
-      });
-    } else {
-      // Mock data for demo
-      setPosts([
-        { id: 1, posts: ["Just shipped a new feature for Cast Flow! The micro-tip..."] },
-        { id: 2, posts: ["Building the future of decentralized social media. Crypto..."] },
-        { id: 3, posts: ["GM Farcaster! Ready to schedule some amazing content..."] }
-      ]);
-    }
+    const loadData = async () => {
+      if (user?.fid) {
+        try {
+          // Load user's scheduled posts
+          const response = await fetch(`/api/user-posts?fid=${user.fid}`);
+          const postsData = await response.json();
+          
+          if (postsData.success) {
+            setPosts(postsData.posts || []);
+          }
+          
+          // Load active tip configurations
+          const { data: tipData } = await supabase
+            .from('tip_pools')
+            .select('*')
+            .eq('creator_fid', user.fid.toString());
+          
+          setActiveTips(tipData || []);
+        } catch (error) {
+          console.error('Error loading tips data:', error);
+          setPosts([]);
+          setActiveTips([]);
+        }
+      } else {
+        setPosts([]);
+        setActiveTips([]);
+      }
+    };
+
+    loadData();
   }, [user]);
 
   const handleSaveTipConfig = async () => {

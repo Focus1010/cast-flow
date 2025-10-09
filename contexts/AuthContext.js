@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { initializeFarcasterSDK, getFarcasterUser, getFarcasterContext } from '../lib/farcaster';
 
 const AuthContext = createContext();
 
@@ -24,6 +25,37 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       
       try {
+        // Initialize Farcaster SDK first
+        await initializeFarcasterSDK();
+        
+        // Try to get Farcaster user data
+        const farcasterUser = getFarcasterUser();
+        const farcasterContext = getFarcasterContext();
+        
+        console.log('Farcaster user:', farcasterUser);
+        console.log('Farcaster context:', farcasterContext);
+        
+        if (farcasterUser) {
+          // User is in Farcaster environment
+          const userData = {
+            fid: farcasterUser.fid,
+            wallet: farcasterUser.custody_address || address,
+            isConnected: true,
+            username: farcasterUser.username || 'User',
+            display_name: farcasterUser.display_name || 'Farcaster User',
+            bio: farcasterUser.profile?.bio?.text || 'Farcaster user',
+            pfp_url: farcasterUser.pfp_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${farcasterUser.fid}`,
+            follower_count: farcasterUser.follower_count || 0,
+            following_count: farcasterUser.following_count || 0,
+            custody_address: farcasterUser.custody_address || '',
+          };
+          
+          setUser(userData);
+          setAuthenticated(true);
+          localStorage.setItem('user', JSON.stringify(userData));
+          return;
+        }
+        
         if (isConnected && address) {
           // User has connected wallet - try to fetch Farcaster data
           setAuthenticated(true);

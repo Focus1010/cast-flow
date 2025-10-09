@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function LeaderboardPage() {
@@ -8,73 +7,59 @@ export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [userRank, setUserRank] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock data matching your design
-  const mockLeaderboard = [
-    {
-      rank: 1,
-      username: "vitalik.eth",
-      fid: 5650,
-      avatar: "VB",
-      amount: 2450,
-      count: 45,
-      percentage: 98
-    },
-    {
-      rank: 2,
-      username: "dwr.eth",
-      fid: 3,
-      avatar: "DC",
-      amount: 1850,
-      count: 38,
-      percentage: 95
-    },
-    {
-      rank: 3,
-      username: "jessepollak",
-      fid: 2,
-      avatar: "JM",
-      amount: 1320,
-      count: 32,
-      percentage: 92
-    },
-    {
-      rank: 4,
-      username: "abishek",
-      fid: 13,
-      avatar: "AB",
-      amount: 980,
-      count: 28,
-      percentage: 88
-    },
-    {
-      rank: 5,
-      username: "cdixon.eth",
-      fid: 156,
-      avatar: "CF",
-      amount: 750,
-      count: 24,
-      percentage: 85
-    },
-    {
-      rank: 6,
-      username: "neynar",
-      fid: 89,
-      avatar: "NJ",
-      amount: 650,
-      count: 22,
-      percentage: 82
+  // Fetch real leaderboard data
+  const fetchLeaderboard = async (type) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/leaderboard?type=${type}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch leaderboard');
+      }
+      
+      if (data.success) {
+        // Add rank to each user
+        const rankedData = data.data.map((user, index) => ({
+          ...user,
+          rank: index + 1,
+          avatar: user.display_name ? user.display_name.substring(0, 2).toUpperCase() : 'U',
+          amount: type === 'tippers' ? user.totalTipped : user.postsScheduled,
+          count: type === 'tippers' ? user.tipCount : user.postsScheduled,
+          percentage: Math.max(50, 100 - (index * 2)) // Simple percentage calculation
+        }));
+        
+        setLeaderboard(rankedData);
+        
+        // Find current user's rank
+        if (user?.fid) {
+          const currentUserRank = rankedData.find(u => u.fid === user.fid);
+          setUserRank(currentUserRank ? currentUserRank.rank : null);
+        }
+      } else {
+        setLeaderboard([]);
+        setUserRank(null);
+      }
+    } catch (err) {
+      console.error('Error fetching leaderboard:', err);
+      setError(err.message);
+      setLeaderboard([]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      setLeaderboard(mockLeaderboard);
-      setUserRank(47); // Mock user rank
-      setLoading(false);
-    }, 1000);
+    fetchLeaderboard(activeTab);
   }, [activeTab]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+  };
 
   const handleImproveRanking = () => {
     // Navigate to tips configuration or packages
@@ -90,32 +75,34 @@ export default function LeaderboardPage() {
             <p className="page-subtitle">Top Farcaster Creators</p>
           </div>
           <div className="header-actions">
-            <div className="user-avatar">JD</div>
-            <button className="notification-btn">
-              🔔
-              <span className="notification-badge"></span>
-            </button>
+            <div className="user-avatar">
+              {user?.username ? user.username.substring(0, 2).toUpperCase() : 'U'}
+            </div>
+            <button className="notification-btn">🔔</button>
           </div>
         </div>
-        <div className="loading-state">Loading leaderboard...</div>
+
+        <div className="leaderboard-content">
+          <div className="loading-message">
+            <p>Loading leaderboard data...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="leaderboard-page">
-      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">🏆 Leaderboard</h1>
           <p className="page-subtitle">Top Farcaster Creators</p>
         </div>
         <div className="header-actions">
-          <div className="user-avatar">JD</div>
-          <button className="notification-btn">
-            🔔
-            <span className="notification-badge"></span>
-          </button>
+          <div className="user-avatar">
+            {user?.username ? user.username.substring(0, 2).toUpperCase() : 'U'}
+          </div>
+          <button className="notification-btn">🔔</button>
         </div>
       </div>
 
@@ -124,61 +111,83 @@ export default function LeaderboardPage() {
         <div className="tab-navigation">
           <button 
             className={`tab-btn ${activeTab === 'tippers' ? 'active' : ''}`}
-            onClick={() => setActiveTab('tippers')}
+            onClick={() => handleTabChange('tippers')}
           >
-            Top Tippers
+            💰 Top Tippers
           </button>
           <button 
             className={`tab-btn ${activeTab === 'schedulers' ? 'active' : ''}`}
-            onClick={() => setActiveTab('schedulers')}
+            onClick={() => handleTabChange('schedulers')}
           >
-            Top Schedulers
+            📅 Top Schedulers
           </button>
         </div>
 
-        {/* User Rank Card */}
-        <div className="user-rank-card">
-          <div className="rank-info">
-            <span className="rank-badge">You're ranked #{userRank}</span>
+        {/* Current User Rank */}
+        {userRank && (
+          <div className="current-rank">
+            <div className="rank-info">
+              <span className="rank-number">#{userRank}</span>
+              <span className="rank-text">Your current rank</span>
+            </div>
+            <button className="improve-btn" onClick={handleImproveRanking}>
+              📈 Improve Ranking
+            </button>
           </div>
-          <button className="improve-btn" onClick={handleImproveRanking}>
-            Improve Ranking
-          </button>
-        </div>
+        )}
 
-        {/* Section Title */}
-        <h2 className="section-title">
-          {activeTab === 'tippers' ? 'Top Tippers' : 'Top Schedulers'}
-        </h2>
+        {/* Error Message */}
+        {error && (
+          <div className="error-message">
+            <p>⚠️ {error}</p>
+          </div>
+        )}
 
         {/* Leaderboard List */}
-        <div className="leaderboard-list">
-          {leaderboard.map((item) => (
-            <div key={item.fid} className="leaderboard-item">
-              <div className="rank-circle">
-                {item.rank}
-              </div>
-              
-              <div className="user-avatar-large">
-                {item.avatar}
-              </div>
-              
-              <div className="user-details">
-                <div className="user-header">
-                  <span className="username">{item.username}</span>
-                  <span className="verified-badge">✓</span>
+        {leaderboard.length === 0 && !error ? (
+          <div className="empty-state">
+            <div className="empty-icon">🏆</div>
+            <h3>No Data Yet</h3>
+            <p>Be the first to {activeTab === 'tippers' ? 'create tip pools' : 'schedule posts'} and claim the top spot!</p>
+          </div>
+        ) : (
+          <div className="leaderboard-list">
+            {leaderboard.map((item) => (
+              <div key={item.fid} className="leaderboard-item">
+                <div className="rank-circle">
+                  {item.rank}
                 </div>
-                <div className="user-fid">FID: {item.fid}</div>
                 
-                <div className="user-stats">
-                  <span className="stat-amount">${item.amount.toLocaleString()}</span>
-                  <span className="stat-count">📝 {item.count}</span>
-                  <span className="stat-percentage">💖 {item.percentage}%</span>
+                <div className="user-avatar-large">
+                  {item.pfp_url ? (
+                    <img src={item.pfp_url} alt={item.username} />
+                  ) : (
+                    item.avatar
+                  )}
+                </div>
+                
+                <div className="user-details">
+                  <div className="user-header">
+                    <span className="username">@{item.username}</span>
+                    <span className="user-fid">#{item.fid}</span>
+                  </div>
+                  <div className="user-stats">
+                    <span className="amount">
+                      {activeTab === 'tippers' ? `$${item.amount.toFixed(2)}` : `${item.amount} posts`}
+                    </span>
+                    <span className="count">
+                      {activeTab === 'tippers' ? `${item.count} tips` : `${item.count} scheduled`}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="percentage">
+                  {item.percentage}%
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
