@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi';
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import Logo from "../components/Logo";
+import { getUserInitials } from "../utils/helpers";
 
 export default function SchedulerPage() {
   const { address } = useAccount();
@@ -162,7 +163,7 @@ export default function SchedulerPage() {
             <span className="notification-badge"></span>
           </button>
           <div className="user-avatar">
-            {user?.username ? user.username.substring(0, 2).toUpperCase() : 'JD'}
+{getUserInitials(user, 'JD')}
           </div>
         </div>
       </div>

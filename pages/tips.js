@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import Logo from "../components/Logo";
+import { getUserInitials } from "../utils/helpers";
 
 export default function TipsPage() {
   const { user, authenticated, login } = useAuth();

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import Logo from "../components/Logo";
+import { getUserInitials } from "../utils/helpers";
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
@@ -77,7 +78,7 @@ export default function LeaderboardPage() {
           </div>
           <div className="header-actions">
             <div className="user-avatar">
-              {user?.username ? user.username.substring(0, 2).toUpperCase() : 'U'}
+              {getUserInitials(user, 'U')}
             </div>
             <button className="notification-btn">🔔</button>
           </div>
@@ -101,7 +102,7 @@ export default function LeaderboardPage() {
         </div>
         <div className="header-actions">
           <div className="user-avatar">
-            {user?.username ? user.username.substring(0, 2).toUpperCase() : 'U'}
+            {getUserInitials(user, 'U')}
           </div>
           <button className="notification-btn">🔔</button>
         </div>

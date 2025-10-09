@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi';
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import Logo from "../components/Logo";
+import { getUserInitials } from "../utils/helpers";
 
 export default function ProfilePage() {
   const { user, authenticated, login } = useAuth();
@@ -182,7 +183,7 @@ export default function ProfilePage() {
         <div className="header-actions">
           <button className="notification-btn">🔔</button>
           <div className="user-avatar">
-            {user?.username ? user.username.substring(0, 2).toUpperCase() : 'JD'}
+            {getUserInitials(user, 'JD')}
           </div>
         </div>
       </div>
@@ -191,7 +192,7 @@ export default function ProfilePage() {
         {/* User Info Section */}
         <div className="user-info-section">
           <div className="user-avatar-large">
-            {user?.username ? user.username.substring(0, 2).toUpperCase() : 'AX'}
+            {getUserInitials(user, 'AX')}
           </div>
           
           <div className="user-details">

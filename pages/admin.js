@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useAccount } from 'wagmi';
 import { supabase } from "../lib/supabase";
 import Logo from "../components/Logo";
+import { getUserInitials } from "../utils/helpers";
 
 export default function AdminPage() {
   const { user, authenticated, login } = useAuth();
@@ -159,7 +160,7 @@ export default function AdminPage() {
           <div className="header-actions">
             <button className="notification-btn">🔔</button>
             <div className="user-avatar">
-              {user?.username ? user.username.substring(0, 2).toUpperCase() : 'JD'}
+              {getUserInitials(user, 'JD')}
             </div>
           </div>
         </div>
@@ -182,7 +183,7 @@ export default function AdminPage() {
         <div className="header-actions">
           <button className="notification-btn">🔔</button>
           <div className="user-avatar">
-            {user?.username ? user.username.substring(0, 2).toUpperCase() : 'AD'}
+            {getUserInitials(user, 'AD')}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { useAuth } from "../contexts/AuthContext";
 import Logo from "../components/Logo";
+import { getUserInitials } from "../utils/helpers";
 import { useRouter } from 'next/router';
 
 export default function MorePage() {
@@ -81,7 +82,7 @@ export default function MorePage() {
         <div className="header-actions">
           <button className="notification-btn">🔔</button>
           <div className="user-avatar">
-            {user?.username ? user.username.substring(0, 2).toUpperCase() : 'JD'}
+            {getUserInitials(user, 'JD')}
           </div>
         </div>
       </div>
@@ -90,7 +91,7 @@ export default function MorePage() {
         {/* User Profile Header */}
         <div className="user-profile-header">
           <div className="profile-avatar">
-            {user?.username ? user.username.substring(0, 2).toUpperCase() : 'JD'}
+            {getUserInitials(user, 'JD')}
           </div>
           <div className="profile-info">
             <div className="profile-name">
