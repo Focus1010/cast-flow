@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from '../contexts/AuthContext';
 import { useAccount } from 'wagmi';
-import { supabase } from '../lib/supabase';
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
+import Logo from "../components/Logo";
 
 export default function ProfilePage() {
   const { user, authenticated, login } = useAuth();
@@ -155,7 +156,7 @@ export default function ProfilePage() {
       <div className="profile-page">
         <div className="page-header">
           <div>
-            <h1 className="page-title">👤 Profile</h1>
+            <Logo size={28} showText={true} />
           </div>
           <div className="header-actions">
             <button className="notification-btn">🔔</button>

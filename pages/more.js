@@ -1,11 +1,11 @@
 import React from "react";
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from "../contexts/AuthContext";
+import Logo from "../components/Logo";
 import { useRouter } from 'next/router';
 
 export default function MorePage() {
   const { user, authenticated, login, logout } = useAuth();
   const router = useRouter();
-  
   // Check if user is admin
   const isAdmin = user?.fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID);
 
@@ -76,7 +76,7 @@ export default function MorePage() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">⚙️ More</h1>
+          <Logo size={28} showText={true} />
         </div>
         <div className="header-actions">
           <button className="notification-btn">🔔</button>

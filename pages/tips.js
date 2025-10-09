@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import Logo from "../components/Logo";
 
 export default function TipsPage() {
   const { user, authenticated, login } = useAuth();
@@ -168,8 +169,8 @@ export default function TipsPage() {
       <div className="tips-page">
         <div className="page-header">
           <div>
-            <h1 className="page-title">💰 Tips Configuration</h1>
-            <p className="page-subtitle">Reward engagement on your posts</p>
+            <Logo size={28} showText={true} />
+            <p className="page-subtitle">💰 Reward engagement on your posts</p>
           </div>
           <div className="header-actions">
             <button className="notification-btn">🔔</button>

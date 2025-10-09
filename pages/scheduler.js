@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAccount } from 'wagmi';
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import Logo from "../components/Logo";
 
 export default function SchedulerPage() {
   const { address } = useAccount();
@@ -129,7 +130,7 @@ export default function SchedulerPage() {
       <div className="scheduler-page">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Cast Flow</h1>
+            <Logo size={28} showText={true} />
           </div>
           <div className="header-actions">
             <button className="notification-btn">

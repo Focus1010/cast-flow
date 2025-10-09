@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import Logo from "../components/Logo";
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
@@ -71,8 +72,8 @@ export default function LeaderboardPage() {
       <div className="leaderboard-page">
         <div className="page-header">
           <div>
-            <h1 className="page-title">🏆 Leaderboard</h1>
-            <p className="page-subtitle">Top Farcaster Creators</p>
+            <Logo size={28} showText={true} />
+            <p className="page-subtitle">🏆 Top Farcaster Creators</p>
           </div>
           <div className="header-actions">
             <div className="user-avatar">
@@ -95,8 +96,8 @@ export default function LeaderboardPage() {
     <div className="leaderboard-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">🏆 Leaderboard</h1>
-          <p className="page-subtitle">Top Farcaster Creators</p>
+          <Logo size={28} showText={true} />
+          <p className="page-subtitle">🏆 Top Farcaster Creators</p>
         </div>
         <div className="header-actions">
           <div className="user-avatar">

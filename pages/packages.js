@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from '../contexts/AuthContext';
-import { useAccount, useWriteContract } from 'wagmi';
+import { useAccount, useConnect } from 'wagmi';
+import { ethers } from 'ethers';
+import { useAuth } from "../contexts/AuthContext";
+import Logo from "../components/Logo";
 import { parseUnits } from 'viem';
 import { supabase } from '../lib/supabase';
 import { TIPPING_CONTRACT_ABI, ERC20_ABI, CONTRACT_ADDRESSES } from '../utils/contractABI';
 
 export default function PackagesPage() {
+{{ ... }}
   const { user, authenticated, login } = useAuth();
   const { address, isConnected } = useAccount();
   const { writeContract } = useWriteContract();
@@ -187,8 +190,8 @@ export default function PackagesPage() {
       <div className="packages-page">
         <div className="page-header">
           <div>
-            <h1 className="page-title">💎 Choose Your Plan</h1>
-            <p className="page-subtitle">Scale your Farcaster presence</p>
+            <Logo size={28} showText={true} />
+            <p className="page-subtitle">💎 Scale your Farcaster presence</p>
           </div>
           <div className="header-actions">
             <button className="notification-btn">🔔</button>

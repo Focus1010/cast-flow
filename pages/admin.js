@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAccount } from 'wagmi';
 import { supabase } from "../lib/supabase";
+import Logo from "../components/Logo";
 
 export default function AdminPage() {
   const { user, authenticated, login } = useAuth();
@@ -132,7 +133,7 @@ export default function AdminPage() {
       <div className="admin-page">
         <div className="page-header">
           <div>
-            <h1 className="page-title">⚡ Admin Dashboard</h1>
+            <Logo size={28} showText={true} />
           </div>
           <div className="header-actions">
             <button className="notification-btn">🔔</button>
@@ -153,7 +154,7 @@ export default function AdminPage() {
       <div className="admin-page">
         <div className="page-header">
           <div>
-            <h1 className="page-title">⚡ Admin Dashboard</h1>
+            <Logo size={28} showText={true} />
           </div>
           <div className="header-actions">
             <button className="notification-btn">🔔</button>
