@@ -36,10 +36,11 @@ export default function SchedulerPage() {
       if (user?.fid) {
         try {
           // Load user's package info
+          const userFid = typeof user.fid === 'object' ? user.fid.toString() : user.fid;
           const { data: userData, error: userError } = await supabase
             .from('users')
             .select('package_type, monthly_used')
-            .eq('fid', user.fid)
+            .eq('fid', userFid)
             .single();
 
           if (userData) {
@@ -61,7 +62,7 @@ export default function SchedulerPage() {
           const { data: posts, error: postsError } = await supabase
             .from('scheduled_posts')
             .select('*')
-            .eq('user_fid', user.fid)
+            .eq('user_fid', userFid)
             .order('created_at', { ascending: false });
 
           if (posts) {
@@ -122,10 +123,11 @@ export default function SchedulerPage() {
     try {
       const scheduledDateTime = new Date(`${selectedDate}T${selectedTime}`);
       
+      const userFid = typeof user.fid === 'object' ? user.fid.toString() : user.fid;
       const { data, error } = await supabase
         .from('scheduled_posts')
         .insert({
-          user_fid: user.fid,
+          user_fid: userFid,
           content: validPosts[0].content,
           thread_posts: validPosts.length > 1 ? validPosts.slice(1).map(p => ({ content: p.content })) : null,
           scheduled_time: scheduledDateTime.toISOString(),

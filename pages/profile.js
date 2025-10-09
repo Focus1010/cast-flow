@@ -41,24 +41,12 @@ export default function ProfilePage() {
 
   const loadUserData = async () => {
     try {
-      // Load user stats from database
-      const { data: posts } = await supabase
-        .from('scheduled_posts')
-        .select('*')
-        .eq('user_id', user.fid);
-      
-      if (posts) {
-        setUserStats(prev => ({
-          ...prev,
-          postsScheduled: posts.length
-        }));
-      }
-
       // Load package info
+      const userFid = typeof user.fid === 'object' ? user.fid.toString() : user.fid;
       const { data: userData } = await supabase
         .from('users')
-        .select('package_type, monthly_used, premium_expiry')
-        .eq('fid', user.fid)
+        .select('package_type, monthly_used')
+        .eq('fid', userFid)
         .single();
 
       if (userData) {
