@@ -1,115 +1,138 @@
-import '../styles/mobile.css';
-import '../styles/globals.css';
+import { useEffect, useState } from 'react';
+import { WagmiProvider } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '../contexts/AuthContext';
+import { config } from '../lib/wagmi';
+import { initializeFarcasterSDK } from '../lib/farcaster';
 import Layout from '../components/Layout';
 import ErrorBoundary from '../components/ErrorBoundary';
 import LoadingScreen from '../components/LoadingScreen';
-import { WagmiProvider } from 'wagmi';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createConfig, http } from 'wagmi';
-import { base } from 'wagmi/chains';
-import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
-import { AuthProvider } from '../contexts/AuthContext';
-import { useEffect, useState } from 'react';
-import { initializeFarcasterSDK } from '../lib/farcaster';
+import '../styles/globals.css';
+import '../styles/mobile.css';
 
 const queryClient = new QueryClient();
-
-// Create config with error handling
-const createWagmiConfig = () => {
-  try {
-    return createConfig({
-      chains: [base],
-      transports: { [base.id]: http() },
-      connectors: [
-        farcasterMiniApp({
-          relay: 'https://relay.farcaster.xyz',
-          rpcUrl: 'https://mainnet.base.org',
-          domain: 'cast-flow-app.vercel.app'
-        })
-      ]
-    });
-  } catch (error) {
-    console.error('Error creating Wagmi config:', error);
-    // Fallback config without Farcaster connector
-    return createConfig({
-      chains: [base],
-      transports: { [base.id]: http() },
-      connectors: []
-    });
-  }
-};
-
-const config = createWagmiConfig();
 
 export default function MyApp({ Component, pageProps }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
-    // Check if mobile
+    let initTimeout;
+    
     const checkMobile = () => {
-      setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+      const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(mobile);
+      console.log('Mobile check:', mobile);
     };
     
-    checkMobile();
-    
-    // Initialize Farcaster SDK early
-    initializeFarcasterSDK().then(() => {
-      console.log('Farcaster SDK initialized in _app.js');
-    }).catch(error => {
-      console.warn('Farcaster SDK initialization failed:', error);
-    });
-    
-    // Handle wallet provider conflicts gracefully without overriding Object.defineProperty
-    if (typeof window !== 'undefined') {
-      // Handle ethereum provider conflicts gracefully
-      const handleError = (event) => {
-        const errorMsg = event.error?.message || '';
-        if (errorMsg.includes('ethereum') || 
-            errorMsg.includes('Cannot redefine property') ||
-            errorMsg.includes('Cannot set property ethereum') ||
-            errorMsg.includes('Cannot convert object to primitive value')) {
-          console.warn('Provider/conversion error detected, continuing...', errorMsg);
-          event.preventDefault();
-          event.stopPropagation();
-          return false;
-        }
+    const debugEnvironment = () => {
+      const info = {
+        userAgent: navigator.userAgent,
+        referrer: document.referrer,
+        location: window.location.href,
+        isIframe: window !== window.top,
+        parentOrigin: window !== window.top ? document.referrer : 'Not in iframe',
+        dimensions: `${window.innerWidth}x${window.innerHeight}`,
+        isFarcaster: document.referrer.includes('farcaster') || window.location.href.includes('farcaster'),
+        hasEthereum: !!window.ethereum,
+        hasFarcaster: !!window.farcaster,
+        hasWebkit: !!window.webkit
       };
       
-      window.addEventListener('error', handleError, true);
-      window.addEventListener('unhandledrejection', (event) => {
-        const errorMsg = event.reason?.message || '';
-        if (errorMsg.includes('ethereum') ||
-            errorMsg.includes('Cannot redefine property') ||
-            errorMsg.includes('Cannot set property ethereum') ||
-            errorMsg.includes('Cannot convert object to primitive value')) {
-          console.warn('Provider/conversion promise rejection, continuing...', errorMsg);
-          event.preventDefault();
-          return false;
-        }
+      console.log('=== FARCASTER DEBUG INFO ===');
+      Object.entries(info).forEach(([key, value]) => {
+        console.log(`${key}:`, value);
       });
       
-      // Add mobile-specific debugging
-      if (isMobile) {
-        console.log('Mobile device detected, initializing mobile optimizations...');
-      }
-      
-      // Set loading to false after a short delay to ensure everything is loaded
-      const timer = setTimeout(() => {
+      setDebugInfo(JSON.stringify(info, null, 2));
+      return info;
+    };
+    
+    const initializeApp = async () => {
+      try {
+        console.log('Starting app initialization...');
+        checkMobile();
+        const envInfo = debugEnvironment();
+        
+        // Set a timeout for initialization
+        initTimeout = setTimeout(() => {
+          console.warn('App initialization timeout, proceeding anyway...');
+          setIsLoading(false);
+        }, 8000); // Longer timeout for Farcaster
+        
+        // Handle errors gracefully
+        const handleError = (event) => {
+          const errorMsg = event.error?.message || '';
+          if (errorMsg.includes('ethereum') || 
+              errorMsg.includes('Cannot redefine property') ||
+              errorMsg.includes('Cannot set property ethereum') ||
+              errorMsg.includes('Cannot convert object to primitive value')) {
+            console.warn('Provider/conversion error detected, continuing...', errorMsg);
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+          }
+        };
+        
+        window.addEventListener('error', handleError, true);
+        window.addEventListener('unhandledrejection', (event) => {
+          const errorMsg = event.reason?.message || '';
+          if (errorMsg.includes('ethereum') ||
+              errorMsg.includes('Cannot redefine property') ||
+              errorMsg.includes('Cannot set property ethereum') ||
+              errorMsg.includes('Cannot convert object to primitive value')) {
+            console.warn('Provider/conversion promise rejection, continuing...', errorMsg);
+            event.preventDefault();
+            return false;
+          }
+        });
+        
+        // Initialize Farcaster SDK with retries
+        let sdkInitialized = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            console.log(`Farcaster SDK initialization attempt ${attempt}...`);
+            await initializeFarcasterSDK();
+            console.log('Farcaster SDK initialized successfully');
+            sdkInitialized = true;
+            break;
+          } catch (error) {
+            console.warn(`SDK init attempt ${attempt} failed:`, error);
+            if (attempt < 3) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
+          }
+        }
+        
+        if (!sdkInitialized) {
+          console.warn('Farcaster SDK failed to initialize after 3 attempts, continuing without it');
+        }
+        
+        // Wait a bit more for Farcaster environment to stabilize
+        await new Promise(resolve => setTimeout(resolve, envInfo.isFarcaster ? 3000 : 1000));
+        
+        clearTimeout(initTimeout);
         console.log('App initialization complete');
         setIsLoading(false);
-      }, isMobile ? 2000 : 1500); // Longer delay for mobile
-      
-      return () => {
-        window.removeEventListener('error', handleError);
-        clearTimeout(timer);
-      };
-    }
-  }, [isMobile]);
+        
+      } catch (error) {
+        console.error('App initialization error:', error);
+        clearTimeout(initTimeout);
+        setIsLoading(false);
+      }
+    };
+    
+    initializeApp();
+    
+    return () => {
+      if (initTimeout) clearTimeout(initTimeout);
+    };
+  }, []);
 
   // Show loading screen on mobile or during initial load
   if (isLoading) {
-    return <LoadingScreen />;
+    return <LoadingScreen debugInfo={debugInfo} />;
   }
 
   return (

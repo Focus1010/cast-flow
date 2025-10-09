@@ -1,14 +1,23 @@
 import React, { useEffect, useState } from 'react';
 
-export default function LoadingScreen() {
+export default function LoadingScreen({ debugInfo }) {
   const [dots, setDots] = useState('');
+  const [showDebug, setShowDebug] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setDots(prev => prev.length >= 3 ? '' : prev + '.');
     }, 500);
 
-    return () => clearInterval(interval);
+    // Show debug info after 3 seconds
+    const debugTimer = setTimeout(() => {
+      setShowDebug(true);
+    }, 3000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(debugTimer);
+    };
   }, []);
 
   return (
@@ -70,6 +79,30 @@ export default function LoadingScreen() {
           animation: 'loading 2s ease-in-out infinite'
         }} />
       </div>
+      
+      {showDebug && debugInfo && (
+        <div style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '20px',
+          right: '20px',
+          background: 'rgba(0, 0, 0, 0.8)',
+          padding: '15px',
+          borderRadius: '8px',
+          fontSize: '12px',
+          fontFamily: 'monospace',
+          color: '#00ff00',
+          maxHeight: '200px',
+          overflow: 'auto'
+        }}>
+          <div style={{ marginBottom: '10px', color: '#ffffff', fontWeight: 'bold' }}>
+            Debug Info (Tap to dismiss):
+          </div>
+          <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+            {debugInfo}
+          </pre>
+        </div>
+      )}
       
       <style jsx>{`
         @keyframes pulse {
