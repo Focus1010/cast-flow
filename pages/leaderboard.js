@@ -3,67 +3,183 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function LeaderboardPage() {
-  const { user, authenticated, login } = useAuth();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("tippers");
   const [leaderboard, setLeaderboard] = useState([]);
+  const [userRank, setUserRank] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        // Count scheduled posts per user and rank top 50
-        const { data, error } = await supabase.rpc('get_top_users', { limit_count: 50 });
-        if (error) {
-          console.error("Leaderboard fetch failed:", error.message);
-          setLeaderboard([]);
-        } else {
-          setLeaderboard(data || []);
-        }
-      } catch (err) {
-        console.error("Leaderboard fetch failed:", err.message);
-        setLeaderboard([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLeaderboard();
-  }, []);
+  // Mock data matching your design
+  const mockLeaderboard = [
+    {
+      rank: 1,
+      username: "vitalik.eth",
+      fid: 5650,
+      avatar: "VB",
+      amount: 2450,
+      count: 45,
+      percentage: 98
+    },
+    {
+      rank: 2,
+      username: "dwr.eth",
+      fid: 3,
+      avatar: "DC",
+      amount: 1850,
+      count: 38,
+      percentage: 95
+    },
+    {
+      rank: 3,
+      username: "jessepollak",
+      fid: 2,
+      avatar: "JM",
+      amount: 1320,
+      count: 32,
+      percentage: 92
+    },
+    {
+      rank: 4,
+      username: "abishek",
+      fid: 13,
+      avatar: "AB",
+      amount: 980,
+      count: 28,
+      percentage: 88
+    },
+    {
+      rank: 5,
+      username: "cdixon.eth",
+      fid: 156,
+      avatar: "CF",
+      amount: 750,
+      count: 24,
+      percentage: 85
+    },
+    {
+      rank: 6,
+      username: "neynar",
+      fid: 89,
+      avatar: "NJ",
+      amount: 650,
+      count: 22,
+      percentage: 82
+    }
+  ];
 
-  // If you don't have a stored procedure yet, use this raw query instead
-  // Note: Requires Supabase to have a 'users' table with fid and a 'scheduled_posts' table with user_id
-  /*
-  const { data, error } = await supabase
-    .from('scheduled_posts')
-    .select('user_id, count', { count: 'exact' })
-    .group('user_id')
-    .order('count', { ascending: false })
-    .limit(50)
-    .then(result => {
-      if (error) throw error;
-      return result.data.map(row => ({
-        user_id: row.user_id,
-        post_count: row.count
-      }));
-    });
-  */
+  useEffect(() => {
+    // Simulate loading
+    setTimeout(() => {
+      setLeaderboard(mockLeaderboard);
+      setUserRank(47); // Mock user rank
+      setLoading(false);
+    }, 1000);
+  }, [activeTab]);
+
+  const handleImproveRanking = () => {
+    // Navigate to tips configuration or packages
+    alert("Improve your ranking by tipping more users or scheduling more posts!");
+  };
+
+  if (loading) {
+    return (
+      <div className="leaderboard-page">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">🏆 Leaderboard</h1>
+            <p className="page-subtitle">Top Farcaster Creators</p>
+          </div>
+          <div className="header-actions">
+            <div className="user-avatar">JD</div>
+            <button className="notification-btn">
+              🔔
+              <span className="notification-badge"></span>
+            </button>
+          </div>
+        </div>
+        <div className="loading-state">Loading leaderboard...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="leaderboard-page">
-      <h2 className="leaderboard-title">Top 50 Users</h2>
-      {loading ? (
-        <p>Loading...</p>
-      ) : leaderboard.length === 0 ? (
-        <p>No data available.</p>
-      ) : (
-        <ul className="leaderboard-list">
-          {leaderboard.map((entry, index) => (
-            <li key={entry.user_id || entry.fid} className="leaderboard-item">
-              <span className="rank">{index + 1}</span>
-              <span className="address">User FID: {entry.user_id || entry.fid}</span>
-              <span className="metric">Posts: {entry.post_count || entry.count}</span>
-            </li>
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">🏆 Leaderboard</h1>
+          <p className="page-subtitle">Top Farcaster Creators</p>
+        </div>
+        <div className="header-actions">
+          <div className="user-avatar">JD</div>
+          <button className="notification-btn">
+            🔔
+            <span className="notification-badge"></span>
+          </button>
+        </div>
+      </div>
+
+      <div className="leaderboard-content">
+        {/* Tab Navigation */}
+        <div className="tab-navigation">
+          <button 
+            className={`tab-btn ${activeTab === 'tippers' ? 'active' : ''}`}
+            onClick={() => setActiveTab('tippers')}
+          >
+            Top Tippers
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'schedulers' ? 'active' : ''}`}
+            onClick={() => setActiveTab('schedulers')}
+          >
+            Top Schedulers
+          </button>
+        </div>
+
+        {/* User Rank Card */}
+        <div className="user-rank-card">
+          <div className="rank-info">
+            <span className="rank-badge">You're ranked #{userRank}</span>
+          </div>
+          <button className="improve-btn" onClick={handleImproveRanking}>
+            Improve Ranking
+          </button>
+        </div>
+
+        {/* Section Title */}
+        <h2 className="section-title">
+          {activeTab === 'tippers' ? 'Top Tippers' : 'Top Schedulers'}
+        </h2>
+
+        {/* Leaderboard List */}
+        <div className="leaderboard-list">
+          {leaderboard.map((item) => (
+            <div key={item.fid} className="leaderboard-item">
+              <div className="rank-circle">
+                {item.rank}
+              </div>
+              
+              <div className="user-avatar-large">
+                {item.avatar}
+              </div>
+              
+              <div className="user-details">
+                <div className="user-header">
+                  <span className="username">{item.username}</span>
+                  <span className="verified-badge">✓</span>
+                </div>
+                <div className="user-fid">FID: {item.fid}</div>
+                
+                <div className="user-stats">
+                  <span className="stat-amount">${item.amount.toLocaleString()}</span>
+                  <span className="stat-count">📝 {item.count}</span>
+                  <span className="stat-percentage">💖 {item.percentage}%</span>
+                </div>
+              </div>
+            </div>
           ))}
-        </ul>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

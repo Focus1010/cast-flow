@@ -12,24 +12,31 @@ jobs:
     
     steps:
     - name: Check Secrets
+      env:
+        VERCEL_URL: ${{ secrets.VERCEL_URL }}
+        CRON_SECRET: ${{ secrets.CRON_SECRET }}
       run: |
-        if [ -z "${{ secrets.VERCEL_URL }}" ]; then
+        if [ -z "$VERCEL_URL" ]; then
           echo "❌ VERCEL_URL secret is not set"
           exit 1
         fi
-        if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+        if [ -z "$CRON_SECRET" ]; then
           echo "❌ CRON_SECRET secret is not set"
           exit 1
         fi
         echo "✅ All secrets are configured"
         
     - name: Process Scheduled Posts
+      env:
+        VERCEL_URL: ${{ secrets.VERCEL_URL }}
+        CRON_SECRET: ${{ secrets.CRON_SECRET }}
       run: |
         echo "🚀 Processing scheduled posts..."
-        echo "Calling: ${{ secrets.VERCEL_URL }}/api/manual-process-posts"
+        echo "Calling: $VERCEL_URL/api/manual-process-posts"
         
-        response=$(curl -s -w "%{http_code}" -X POST "${{ secrets.VERCEL_URL }}/api/manual-process-posts" \
-          -H "Content-Type: application/json")
+        response=$(curl -s -w "%{http_code}" -X POST "$VERCEL_URL/api/manual-process-posts" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer $CRON_SECRET")
         
         http_code="${response: -3}"
         body="${response%???}"

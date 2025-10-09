@@ -1,625 +1,305 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from '../contexts/AuthContext';
-import { useAccount, useWriteContract, useReadContract } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { supabase } from '../lib/supabase';
-import { ethers } from 'ethers';
-import { TIPPING_CONTRACT_ABI, ERC20_ABI, CONTRACT_ADDRESSES } from '../utils/contractABI';
-
-const contractAddress = process.env.CONTRACT_ADDRESS;
 
 export default function ProfilePage() {
   const { user, authenticated, login } = useAuth();
-  const { address, isConnected } = useAccount();
-  const { writeContract } = useWriteContract();
-  const [claimableTips, setClaimableTips] = useState([]);
-  const [claiming, setClaiming] = useState({ ETH: false, USDC: false, ENB: false, FCS: false });
-  const [castsUsed, setCastsUsed] = useState(0);
-  const [premiumExpiry, setPremiumExpiry] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [manualFid, setManualFid] = useState('');
-  const [loadingManualFid, setLoadingManualFid] = useState(false);
-  const [signerSetup, setSignerSetup] = useState({ loading: false, approvalUrl: null });
+  const { address } = useAccount();
+  
+  // State for user stats
+  const [userStats, setUserStats] = useState({
+    postsScheduled: 127,
+    tipsReceived: 2450
+  });
+  
+  // State for package info
+  const [packageInfo, setPackageInfo] = useState({
+    plan: "Pro",
+    used: 15,
+    total: 30
+  });
+  
+  // State for claimable amounts
+  const [claimableAmounts, setClaimableAmounts] = useState({
+    ETH: "0.5",
+    USDC: "0",
+    ENB: "0",
+    FCS: "0"
+  });
+  
+  // State for claiming
+  const [claiming, setClaiming] = useState({
+    ETH: false,
+    USDC: false,
+    ENB: false,
+    FCS: false
+  });
 
+  // Load user data
   useEffect(() => {
-    const loadUserData = async () => {
-      if (!user) {
-        setError('No user data. Sign in first.');
-        return;
-      }
-      
-      setLoading(true);
-      setError('');
-      
-      try {
-        // First try to find user by fid with better error handling
-        let { data: u, error: uError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('fid', user.fid)
-          .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no rows
-
-        if (!u) {
-          // User doesn't exist, create new user
-          const { data: newUser, error: createError } = await supabase
-            .from('users')
-            .insert({
-              fid: user.fid,
-              username: user.username || '',
-              bio: user.bio || '',
-              wallet_address: user.wallet || '',
-              monthly_used: 0,
-              premium_expiry: null,
-              is_admin: false
-            })
-            .select()
-            .single();
-          
-          if (createError) {
-            console.error('Create user error:', createError);
-            throw createError;
-          }
-          u = newUser;
-        } else if (uError) {
-          console.error('User lookup error:', uError);
-          throw uError;
-        }
-
-        if (uError && uError.code !== 'PGRST116') {
-          console.error('Supabase error:', uError);
-        }
-
-        // Set user data from either existing or newly created record
-        const userData = u || {
-          monthly_used: 0,
-          premium_expiry: 0
-        };
-        
-        setCastsUsed(userData.monthly_used || 0);
-        setPremiumExpiry(userData.premium_expiry || 0);
-
-        // Load claimable tips from new contract
-        await loadClaimableTips();
-        
-      } catch (err) {
-        console.error('Profile load error:', err);
-        setError('Failed to load profile: ' + err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (authenticated && user) {
+    if (user) {
       loadUserData();
-    } else {
-      setLoading(false);
     }
-  }, [user, authenticated]);
+  }, [user]);
 
-  const loadClaimableTips = async () => {
+  const loadUserData = async () => {
     try {
-      if (!window.ethereum || !CONTRACT_ADDRESSES.TIPPING_CONTRACT) return;
+      // Load user stats from database
+      const { data: posts } = await supabase
+        .from('scheduled_posts')
+        .select('*')
+        .eq('user_id', user.fid);
       
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(
-        CONTRACT_ADDRESSES.TIPPING_CONTRACT,
-        TIPPING_CONTRACT_ABI,
-        provider
-      );
+      if (posts) {
+        setUserStats(prev => ({
+          ...prev,
+          postsScheduled: posts.length
+        }));
+      }
 
-      const userAddress = await signer.getAddress();
-      
-      // Get supported tokens
-      const supportedTokens = await contract.getSupportedTokens();
-      
-      // Load claimable balances for each token
-      const tips = [];
-      
-      // ETH balance
-      const ethBalance = await contract.getClaimableBalance(userAddress, ethers.ZeroAddress);
-      if (ethBalance > 0) {
-        tips.push({
-          token: 'ETH',
-          address: ethers.ZeroAddress,
-          balance: ethBalance,
-          symbol: 'ETH',
-          formatted: CONTRACT_HELPERS.formatTokenAmount(ethBalance.toString(), 18)
+      // Load package info
+      const { data: userData } = await supabase
+        .from('users')
+        .select('package_type, monthly_used, premium_expiry')
+        .eq('fid', user.fid)
+        .single();
+
+      if (userData) {
+        const packageLimits = {
+          'free': 10,
+          'starter': 15,
+          'pro': 30,
+          'elite': 60
+        };
+
+        setPackageInfo({
+          plan: userData.package_type || 'free',
+          used: userData.monthly_used || 0,
+          total: packageLimits[userData.package_type] || 10
         });
       }
-      
-      // Token balances
-      for (const tokenAddress of supportedTokens) {
-        const balance = await contract.getClaimableBalance(userAddress, tokenAddress);
-        if (balance > 0) {
-          const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
-          const symbol = await tokenContract.symbol();
-          const decimals = await tokenContract.decimals();
-          
-          tips.push({
-            token: symbol,
-            address: tokenAddress,
-            balance: balance,
-            symbol: symbol,
-            formatted: CONTRACT_HELPERS.formatTokenAmount(balance.toString(), decimals)
-          });
-        }
-      }
-      
-      setClaimableTips(tips);
-      
+
+      // Load claimable tips (mock data for now)
+      // In production, this would query your smart contract
+      setClaimableAmounts({
+        ETH: "0.5",
+        USDC: "125.50",
+        ENB: "0",
+        FCS: "0"
+      });
+
     } catch (error) {
-      console.error('Error loading claimable tips:', error);
+      console.error('Error loading user data:', error);
     }
   };
 
-  const handleClaimTip = async (tipData) => {
-    if (!user || !isConnected) {
-      alert('Please connect your wallet first');
+  const handleClaimToken = async (token) => {
+    if (!authenticated) {
+      login();
       return;
     }
-    
-    setClaiming(prev => ({ ...prev, [tipData.token]: true }));
+
+    setClaiming(prev => ({ ...prev, [token]: true }));
     
     try {
-      console.log('🎯 Claiming tip:', tipData);
+      // Mock claim process - replace with actual smart contract interaction
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      if (!CONTRACT_ADDRESSES?.TIPPING_CONTRACT) {
-        throw new Error('Tipping contract address not configured');
-      }
-
-      let result;
-      if (tipData.address === ethers.ZeroAddress) {
-        // Claim ETH
-        result = await writeContract({
-          address: CONTRACT_ADDRESSES.TIPPING_CONTRACT,
-          abi: TIPPING_CONTRACT_ABI,
-          functionName: 'claimETH',
-          args: [],
-        });
-      } else {
-        // Claim token
-        result = await writeContract({
-          address: CONTRACT_ADDRESSES.TIPPING_CONTRACT,
-          abi: TIPPING_CONTRACT_ABI,
-          functionName: 'claimTokens',
-          args: [tipData.address],
-        });
-      }
+      alert(`Successfully claimed ${claimableAmounts[token]} ${token}!`);
       
-      console.log('✅ Claim transaction:', result);
-      alert(`Successfully claimed ${tipData.formatted} ${tipData.symbol}! 🎉`);
-      
-      // Reload claimable tips
-      await loadClaimableTips();
+      // Reset claimable amount
+      setClaimableAmounts(prev => ({ ...prev, [token]: "0" }));
       
     } catch (error) {
-      console.error('Error claiming tip:', error);
-      alert('Failed to claim tip: ' + (error.message || error));
+      console.error('Error claiming token:', error);
+      alert('Failed to claim token');
     } finally {
-      setClaiming(prev => ({ ...prev, [tipData.token]: false }));
+      setClaiming(prev => ({ ...prev, [token]: false }));
     }
   };
 
-  if (loading) return <div className="card">Loading profile...</div>;
-  
+  const handleUpgradePlan = () => {
+    // Navigate to packages page
+    window.location.href = '/packages';
+  };
+
   if (!authenticated) {
     return (
-      <div className="card">
-        <h2 className="mb-3">Profile</h2>
-        <p className="small mb-3">Please connect your wallet to view your profile.</p>
-        <button className="btn" onClick={login}>Connect Wallet</button>
+      <div className="profile-page">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">👤 Profile</h1>
+          </div>
+          <div className="header-actions">
+            <button className="notification-btn">🔔</button>
+            <div className="user-avatar">JD</div>
+          </div>
+        </div>
+        
+        <div className="auth-prompt">
+          <p>Please connect your wallet to view your profile</p>
+          <button className="btn" onClick={login}>Connect Wallet</button>
+        </div>
       </div>
     );
   }
 
-  const handleManualFidLookup = async () => {
-    if (!manualFid || !manualFid.trim()) {
-      alert('Please enter a valid FID');
-      return;
-    }
-
-    setLoadingManualFid(true);
-    try {
-      const response = await fetch(`/api/get-user-data?fid=${manualFid.trim()}`);
-      const userData = await response.json();
-      
-      if (userData.success && userData.user) {
-        // Update user with Farcaster data
-        const updatedUser = {
-          ...user,
-          fid: userData.user.fid,
-          username: userData.user.username,
-          display_name: userData.user.display_name,
-          bio: userData.user.profile?.bio?.text || '',
-          pfp_url: userData.user.pfp_url,
-          signer_uuid: userData.user.signer_uuid || '', // This might be available
-        };
-        
-        console.log('✅ Manual FID lookup successful:', updatedUser);
-        // You'd need to update the auth context here
-        alert('Farcaster profile loaded! Note: You may still need signer permissions for posting.');
-      } else {
-        alert('FID not found or invalid');
-      }
-    } catch (error) {
-      console.error('Error looking up FID:', error);
-      alert('Error looking up FID: ' + error.message);
-    } finally {
-      setLoadingManualFid(false);
-    }
-  };
-
-  const handleCreateSigner = async () => {
-    if (!user?.fid || user.fid === 0) {
-      alert('Please load your Farcaster profile first');
-      return;
-    }
-
-    setSignerSetup({ loading: true, approvalUrl: null });
-    
-    try {
-      const response = await fetch('/api/create-signer', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fid: user.fid
-        })
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        setSignerSetup({ 
-          loading: false, 
-          approvalUrl: result.approval_url,
-          signerUuid: result.signer_uuid
-        });
-        
-        alert('Signer created! Please approve it using the link that will appear below.');
-      } else {
-        throw new Error(result.message || result.error);
-      }
-    } catch (error) {
-      console.error('Error creating signer:', error);
-      alert('Failed to create signer: ' + error.message);
-      setSignerSetup({ loading: false, approvalUrl: null });
-    }
-  };
-  
-  if (error) return <div className="card"><p className="small">{error}</p></div>;
-
   return (
-    <div className="card">
-      <h2 className="mb-3">Profile</h2>
-      
-      {/* User Info Section */}
-      <div style={{ marginBottom: "24px", padding: "16px", backgroundColor: "rgba(124, 58, 237, 0.1)", borderRadius: "8px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px" }}>
-          <img 
-            src={user?.pfp_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${user?.fid}`}
-            alt="Profile"
-            style={{ width: "64px", height: "64px", borderRadius: "50%", objectFit: "cover" }}
-            onError={(e) => {
-              e.target.src = `https://api.dicebear.com/7.x/identicon/svg?seed=${user?.fid}`;
-            }}
-          />
-          <div>
-            <h3 style={{ margin: 0, color: "#7c3aed" }}>
-              {user?.display_name || user?.username || 'Anonymous'}
-            </h3>
-            <p style={{ margin: "4px 0", fontSize: "14px", opacity: 0.8 }}>
-              @{user?.username} • FID: {user?.fid}
-            </p>
-            {user?.follower_count !== undefined && (
-              <p style={{ margin: "4px 0", fontSize: "12px", opacity: 0.7 }}>
-                {user.follower_count} followers • {user.following_count} following
-              </p>
-            )}
-            {user?.bio && <p style={{ margin: "4px 0", fontSize: "14px", fontStyle: "italic" }}>{user.bio}</p>}
+    <div className="profile-page">
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">👤 Profile</h1>
+        </div>
+        <div className="header-actions">
+          <button className="notification-btn">🔔</button>
+          <div className="user-avatar">
+            {user?.username ? user.username.substring(0, 2).toUpperCase() : 'JD'}
           </div>
         </div>
-        
-        <div style={{ marginBottom: "12px" }}>
-          <label className="small">
-            Primary Wallet (For Transactions) 
-            {user?.isConnected && <span style={{ color: '#16a34a', marginLeft: '8px' }}>✅ Connected</span>}
-          </label>
-          <input 
-            className="input" 
-            type="text" 
-            value={user?.wallet || 'Not connected'} 
-            readOnly 
-            style={{ fontSize: "12px", fontFamily: "monospace" }}
-          />
-          {(!user?.wallet || user?.wallet === 'Not connected') && (
-            <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-              💡 Wallet will connect automatically when you make transactions
-            </p>
-          )}
-        </div>
-        
-        {/* Manual FID Input if no Farcaster data */}
-        {(!user?.fid || user?.fid === 0) && (
-          <div style={{ 
-            marginTop: "16px", 
-            padding: "12px", 
-            backgroundColor: "#fef3c7", 
-            borderRadius: "6px",
-            border: "1px solid #f59e0b"
-          }}>
-            <p style={{ margin: "0 0 8px 0", fontSize: "12px", color: "#92400e" }}>
-              ⚠️ No Farcaster profile found. Enter your FID manually to enable posting:
-            </p>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <input
-                type="number"
-                placeholder="Enter your FID (e.g. 12345)"
-                value={manualFid}
-                onChange={(e) => setManualFid(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: "6px 8px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "4px",
-                  fontSize: "12px"
-                }}
-              />
-              <button
-                onClick={handleManualFidLookup}
-                disabled={loadingManualFid}
-                style={{
-                  padding: "6px 12px",
-                  backgroundColor: loadingManualFid ? "#ccc" : "#f59e0b",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  fontSize: "12px",
-                  cursor: loadingManualFid ? "not-allowed" : "pointer"
-                }}
-              >
-                {loadingManualFid ? "Loading..." : "Load Profile"}
-              </button>
-            </div>
-            <p style={{ margin: "8px 0 0 0", fontSize: "10px", color: "#92400e" }}>
-              Find your FID at <a href="https://warpcast.com/~/settings" target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b" }}>warpcast.com/~/settings</a>
-            </p>
-          </div>
-        )}
+      </div>
 
-        {/* Signer Setup Section */}
-        {user?.fid && user.fid > 0 && !user?.signer_uuid && (
-          <div style={{ 
-            marginTop: "16px", 
-            padding: "12px", 
-            backgroundColor: "#dbeafe", 
-            borderRadius: "6px",
-            border: "1px solid #3b82f6"
-          }}>
-            <p style={{ margin: "0 0 8px 0", fontSize: "12px", color: "#1e40af" }}>
-              🔑 Setup posting permissions to enable scheduled posts:
-            </p>
-            <button
-              onClick={handleCreateSigner}
-              disabled={signerSetup.loading}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: signerSetup.loading ? "#ccc" : "#3b82f6",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                fontSize: "12px",
-                cursor: signerSetup.loading ? "not-allowed" : "pointer",
-                marginBottom: signerSetup.approvalUrl ? "8px" : "0"
-              }}
-            >
-              {signerSetup.loading ? "Creating Signer..." : "🔑 Setup Posting Permissions"}
-            </button>
+      <div className="profile-content">
+        {/* User Info Section */}
+        <div className="user-info-section">
+          <div className="user-avatar-large">
+            {user?.username ? user.username.substring(0, 2).toUpperCase() : 'AX'}
+          </div>
+          
+          <div className="user-details">
+            <div className="user-header">
+              <h2 className="username">
+                {user?.display_name || user?.username || 'alex.eth'}
+              </h2>
+              <span className="verified-badge">✓</span>
+            </div>
             
-            {signerSetup.approvalUrl && (
-              <div style={{ marginTop: "8px" }}>
-                <p style={{ margin: "0 0 4px 0", fontSize: "11px", color: "#1e40af" }}>
-                  ✅ Signer created! Click below to approve:
-                </p>
-                <a 
-                  href={signerSetup.approvalUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "inline-block",
-                    padding: "6px 12px",
-                    backgroundColor: "#10b981",
-                    color: "white",
-                    textDecoration: "none",
-                    borderRadius: "4px",
-                    fontSize: "11px"
-                  }}
-                >
-                  🚀 Approve Signer
-                </a>
-                <p style={{ margin: "4px 0 0 0", fontSize: "10px", color: "#1e40af" }}>
-                  After approval, refresh this page to enable posting.
-                </p>
+            <div className="user-subtitle">
+              {user?.display_name ? user.username : 'Alex Thompson'}
+            </div>
+            
+            <div className="user-fid">FID: {user?.fid || '12345'}</div>
+            
+            <div className="user-bio">
+              {user?.bio || 'Building the future of decentralized social media. Crypto enthusiast & developer.'}
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon">📝</div>
+            <div className="stat-number">{userStats.postsScheduled}</div>
+            <div className="stat-label">Posts Scheduled</div>
+          </div>
+          
+          <div className="stat-card">
+            <div className="stat-icon">💰</div>
+            <div className="stat-number">${userStats.tipsReceived.toLocaleString()}</div>
+            <div className="stat-label">Tips Received</div>
+          </div>
+        </div>
+
+        {/* Connected Wallet */}
+        <div className="wallet-section">
+          <div className="section-header">
+            <h3>🔗 Connected Wallet</h3>
+          </div>
+          
+          <div className="wallet-card">
+            <div className="wallet-address">
+              {address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : '0x742d...7CcE'}
+            </div>
+            <button className="copy-btn">📋</button>
+          </div>
+        </div>
+
+        {/* Current Plan */}
+        <div className="plan-section">
+          <div className="section-header">
+            <h3>💎 Current Plan</h3>
+            <div className="plan-badge">{packageInfo.plan}</div>
+          </div>
+          
+          <div className="plan-card">
+            <div className="plan-usage">
+              <span className="usage-text">
+                {packageInfo.used}/{packageInfo.total} posts used this month
+              </span>
+              <div className="usage-bar">
+                <div 
+                  className="usage-progress" 
+                  style={{ width: `${(packageInfo.used / packageInfo.total) * 100}%` }}
+                ></div>
               </div>
-            )}
-          </div>
-        )}
-
-        {user?.signer_uuid && (
-          <div style={{ 
-            marginTop: "16px", 
-            padding: "12px", 
-            backgroundColor: "#dcfce7", 
-            borderRadius: "6px",
-            border: "1px solid #16a34a"
-          }}>
-            <p style={{ margin: "0", fontSize: "12px", color: "#15803d" }}>
-              ✅ Posting permissions active! You can now schedule and post casts.
-            </p>
-          </div>
-        )}
-      </div>
-      <div style={{ marginBottom: "16px" }}>
-        <h3 className="mb-2">Usage</h3>
-        <p>Casts Used: {castsUsed}</p>
-        <p>Premium Active: {premiumExpiry > Date.now() / 1000 ? `Yes (expires ${new Date(premiumExpiry * 1000).toLocaleDateString()})` : "No"}</p>
-      </div>
-      <div style={{ marginBottom: "16px" }}>
-        <h3 className="mb-2">💰 Claimable Tips</h3>
-        
-        {/* Individual Token Claim Buttons */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
-          {/* ETH Claim Button */}
-          <div style={{ 
-            border: '1px solid #e5e7eb', 
-            borderRadius: '8px', 
-            padding: '12px',
-            backgroundColor: '#f9fafb'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>ETH</span>
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>Ethereum</span>
             </div>
-            <button
-              className="btn"
-              onClick={() => handleClaimTip({ 
-                token: 'ETH', 
-                symbol: 'ETH', 
-                address: ethers.ZeroAddress,
-                formatted: '0.00' // Will be updated when we load actual amounts
-              })}
-              disabled={claiming.ETH}
-              style={{ 
-                width: '100%',
-                backgroundColor: claiming.ETH ? '#ccc' : '#3b82f6',
-                color: 'white',
-                fontSize: '12px',
-                padding: '6px 12px'
-              }}
-            >
-              {claiming.ETH ? "Claiming..." : "🎯 Claim ETH"}
-            </button>
-          </div>
-
-          {/* USDC Claim Button */}
-          <div style={{ 
-            border: '1px solid #e5e7eb', 
-            borderRadius: '8px', 
-            padding: '12px',
-            backgroundColor: '#f9fafb'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>USDC</span>
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>USD Coin</span>
-            </div>
-            <button
-              className="btn"
-              onClick={() => handleClaimTip({ 
-                token: 'USDC', 
-                symbol: 'USDC', 
-                address: CONTRACT_ADDRESSES?.USDC || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-                formatted: '0.00'
-              })}
-              disabled={claiming.USDC}
-              style={{ 
-                width: '100%',
-                backgroundColor: claiming.USDC ? '#ccc' : '#10b981',
-                color: 'white',
-                fontSize: '12px',
-                padding: '6px 12px'
-              }}
-            >
-              {claiming.USDC ? "Claiming..." : "🎯 Claim USDC"}
-            </button>
-          </div>
-
-          {/* ENB Claim Button */}
-          <div style={{ 
-            border: '1px solid #e5e7eb', 
-            borderRadius: '8px', 
-            padding: '12px',
-            backgroundColor: '#f9fafb'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>ENB</span>
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>ENB Token</span>
-            </div>
-            <button
-              className="btn"
-              onClick={() => handleClaimTip({ 
-                token: 'ENB', 
-                symbol: 'ENB', 
-                address: CONTRACT_ADDRESSES?.ENB || '0x0000000000000000000000000000000000000000',
-                formatted: '0.00'
-              })}
-              disabled={claiming.ENB}
-              style={{ 
-                width: '100%',
-                backgroundColor: claiming.ENB ? '#ccc' : '#f59e0b',
-                color: 'white',
-                fontSize: '12px',
-                padding: '6px 12px'
-              }}
-            >
-              {claiming.ENB ? "Claiming..." : "🎯 Claim ENB"}
-            </button>
-          </div>
-
-          {/* Cast Flow Token Claim Button */}
-          <div style={{ 
-            border: '1px solid #e5e7eb', 
-            borderRadius: '8px', 
-            padding: '12px',
-            backgroundColor: '#f9fafb'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>FCS</span>
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>Cast Flow</span>
-            </div>
-            <button
-              className="btn"
-              onClick={() => handleClaimTip({ 
-                token: 'FCS', 
-                symbol: 'FCS', 
-                address: CONTRACT_ADDRESSES?.CASTFLOW_TOKEN || '0x0000000000000000000000000000000000000000',
-                formatted: '0.00'
-              })}
-              disabled={claiming.FCS}
-              style={{ 
-                width: '100%',
-                backgroundColor: claiming.FCS ? '#ccc' : '#8b5cf6',
-                color: 'white',
-                fontSize: '12px',
-                padding: '6px 12px'
-              }}
-            >
-              {claiming.FCS ? "Claiming..." : "🎯 Claim FCS"}
+            
+            <button className="upgrade-plan-btn" onClick={handleUpgradePlan}>
+              Upgrade Plan
             </button>
           </div>
         </div>
 
-        {claimableTips.length > 0 && (
-          <div>
-            <h4 style={{ marginBottom: '8px', fontSize: '14px', color: '#6b7280' }}>Available Tips:</h4>
-            <div className="token-grid">
-              {claimableTips.map((tip) => (
-                <div key={tip.token} className="token-block" style={{ 
-                  padding: '8px', 
-                  border: '1px solid #e5e7eb', 
-                  borderRadius: '6px',
-                  backgroundColor: '#f9fafb'
-                }}>
-                  <div className="token-info">
-                    <span className="token-name" style={{ fontWeight: 'bold' }}>{tip.symbol}</span>
-                    <span className="token-amount" style={{ fontSize: '12px', color: '#6b7280' }}>{tip.formatted} {tip.symbol}</span>
-                  </div>
-                </div>
-              ))}
+        {/* Claim Tokens */}
+        <div className="claim-section">
+          <div className="claim-card eth-card">
+            <div className="claim-header">
+              <h3>Claim ETH</h3>
             </div>
+            <div className="claim-amount">{claimableAmounts.ETH} ETH</div>
+            <button 
+              className={`claim-btn ${claiming.ETH ? 'loading' : ''}`}
+              onClick={() => handleClaimToken('ETH')}
+              disabled={claiming.ETH || claimableAmounts.ETH === "0"}
+            >
+              {claiming.ETH ? 'Claiming...' : 'Claim'}
+            </button>
           </div>
-        )}
+
+          <div className="claim-card usdc-card">
+            <div className="claim-header">
+              <h3>Claim USDC</h3>
+            </div>
+            <div className="claim-amount">{claimableAmounts.USDC} USDC</div>
+            <button 
+              className={`claim-btn ${claiming.USDC ? 'loading' : ''}`}
+              onClick={() => handleClaimToken('USDC')}
+              disabled={claiming.USDC || claimableAmounts.USDC === "0"}
+            >
+              {claiming.USDC ? 'Claiming...' : 'Claim'}
+            </button>
+          </div>
+
+          <div className="claim-card enb-card">
+            <div className="claim-header">
+              <h3>Claim ENB</h3>
+            </div>
+            <div className="claim-amount">{claimableAmounts.ENB} ENB</div>
+            <button 
+              className={`claim-btn ${claiming.ENB ? 'loading' : ''}`}
+              onClick={() => handleClaimToken('ENB')}
+              disabled={claiming.ENB || claimableAmounts.ENB === "0"}
+            >
+              {claiming.ENB ? 'Claiming...' : 'Claim'}
+            </button>
+          </div>
+
+          <div className="claim-card fcs-card">
+            <div className="claim-header">
+              <h3>Claim FCS</h3>
+            </div>
+            <div className="claim-amount">{claimableAmounts.FCS} FCS</div>
+            <button 
+              className={`claim-btn ${claiming.FCS ? 'loading' : ''}`}
+              onClick={() => handleClaimToken('FCS')}
+              disabled={claiming.FCS || claimableAmounts.FCS === "0"}
+            >
+              {claiming.FCS ? 'Claiming...' : 'Claim'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

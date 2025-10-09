@@ -2,380 +2,326 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAccount } from 'wagmi';
 import { supabase } from "../lib/supabase";
-import { isAdmin } from "../utils/tokenGating";
 
 export default function AdminPage() {
   const { user, authenticated, login } = useAuth();
   const { address } = useAccount();
-  const [isAdminUser, setIsAdminUser] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [configs, setConfigs] = useState({});
-  const [newTokenAddress, setNewTokenAddress] = useState('');
-  const [newTokenSymbol, setNewTokenSymbol] = useState('');
-  const [newTokenAmount, setNewTokenAmount] = useState('');
-  const [newAdminAddress, setNewAdminAddress] = useState('');
+  
+  // Check if user is admin
+  const isAdmin = user?.fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID);
+  
+  // State for add new token form
+  const [newToken, setNewToken] = useState({
+    contractAddress: '',
+    ticker: '',
+    name: '',
+    network: ''
+  });
+  
+  // State for active tokens
+  const [activeTokens, setActiveTokens] = useState([
+    {
+      id: 1,
+      symbol: 'ETH',
+      name: 'Ethereum',
+      type: 'ETH • Native Token',
+      address: '0x0000...0000',
+      activeConfigs: 23,
+      totalTipped: 12400,
+      users: 156,
+      enabled: true
+    },
+    {
+      id: 2,
+      symbol: 'USDC',
+      name: 'USD Coin',
+      type: 'USDC • Stablecoin',
+      address: '0x833...2913',
+      activeConfigs: 45,
+      totalTipped: 8900,
+      users: 203,
+      enabled: true
+    }
+  ]);
+  
+  // State for loading
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      setLoading(true);
-      
-      if (!user || !address) {
-        setIsAdminUser(false);
-        setLoading(false);
-        return;
-      }
+  const handleAddToken = async () => {
+    if (!newToken.contractAddress || !newToken.ticker || !newToken.name || !newToken.network) {
+      alert('Please fill all fields');
+      return;
+    }
 
-      const adminStatus = isAdmin(address, user.fid);
-      setIsAdminUser(adminStatus);
-      
-      if (adminStatus) {
-        await loadConfigs();
-      }
-      
-      setLoading(false);
-    };
-
-    checkAdminStatus();
-  }, [user, address]);
-
-  const loadConfigs = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('admin_config')
-        .select('*');
+      // In production, this would add to your smart contract and database
+      const tokenToAdd = {
+        id: Date.now(),
+        symbol: newToken.ticker,
+        name: newToken.name,
+        type: `${newToken.ticker} • ${newToken.network}`,
+        address: `${newToken.contractAddress.substring(0, 6)}...${newToken.contractAddress.substring(newToken.contractAddress.length - 4)}`,
+        activeConfigs: 0,
+        totalTipped: 0,
+        users: 0,
+        enabled: true
+      };
+
+      setActiveTokens(prev => [...prev, tokenToAdd]);
       
-      if (error) throw error;
-      
-      const configObj = {};
-      data.forEach(config => {
-        configObj[config.config_key] = config.config_value;
+      // Reset form
+      setNewToken({
+        contractAddress: '',
+        ticker: '',
+        name: '',
+        network: ''
       });
+
+      alert('Token added successfully!');
       
-      setConfigs(configObj);
     } catch (error) {
-      console.error('Error loading configs:', error);
-      alert('Failed to load admin configurations');
+      console.error('Error adding token:', error);
+      alert('Failed to add token');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateConfig = async (key, value) => {
-    try {
-      const { error } = await supabase
-        .from('admin_config')
-        .upsert({
-          config_key: key,
-          config_value: value,
-          updated_by: address,
-          updated_at: new Date().toISOString()
-        });
-      
-      if (error) throw error;
-      
-      setConfigs(prev => ({ ...prev, [key]: value }));
-      alert('Configuration updated successfully!');
-    } catch (error) {
-      console.error('Error updating config:', error);
-      alert('Failed to update configuration: ' + error.message);
-    }
-  };
-
-  const addToken = async () => {
-    if (!newTokenAddress || !newTokenSymbol || !newTokenAmount) {
-      alert('Please fill all token fields');
-      return;
-    }
-
-    const currentTokens = configs.unlimited_access_tokens || {};
-    const updatedTokens = {
-      ...currentTokens,
-      [newTokenSymbol]: {
-        address: newTokenAddress,
-        min_amount: newTokenAmount,
-        decimals: 18 // Default, can be made configurable
-      }
-    };
-
-    await updateConfig('unlimited_access_tokens', updatedTokens);
-    setNewTokenAddress('');
-    setNewTokenSymbol('');
-    setNewTokenAmount('');
-  };
-
-  const removeToken = async (symbol) => {
-    if (!confirm(`Remove ${symbol} from unlimited access tokens?`)) return;
-    
-    const currentTokens = configs.unlimited_access_tokens || {};
-    const { [symbol]: removed, ...updatedTokens } = currentTokens;
-    
-    await updateConfig('unlimited_access_tokens', updatedTokens);
-  };
-
-  const addAdminAddress = async () => {
-    if (!newAdminAddress) {
-      alert('Please enter an admin address');
-      return;
-    }
-
-    const currentAddresses = configs.admin_addresses || [];
-    if (currentAddresses.includes(newAdminAddress.toLowerCase())) {
-      alert('Address is already an admin');
-      return;
-    }
-
-    const updatedAddresses = [...currentAddresses, newAdminAddress.toLowerCase()];
-    await updateConfig('admin_addresses', updatedAddresses);
-    setNewAdminAddress('');
-  };
-
-  const removeAdminAddress = async (addressToRemove) => {
-    if (!confirm(`Remove ${addressToRemove} from admin addresses?`)) return;
-    
-    const currentAddresses = configs.admin_addresses || [];
-    const updatedAddresses = currentAddresses.filter(addr => addr !== addressToRemove);
-    
-    await updateConfig('admin_addresses', updatedAddresses);
-  };
-
-  if (loading) {
-    return (
-      <div className="card">
-        <h2 className="mb-3">Admin Panel</h2>
-        <p>Loading...</p>
-      </div>
+  const handleToggleToken = async (tokenId) => {
+    setActiveTokens(prev => 
+      prev.map(token => 
+        token.id === tokenId 
+          ? { ...token, enabled: !token.enabled }
+          : token
+      )
     );
-  }
+  };
+
+  const handleDisableToken = async (tokenId) => {
+    if (!confirm('Are you sure you want to disable this token?')) return;
+    
+    setActiveTokens(prev => 
+      prev.map(token => 
+        token.id === tokenId 
+          ? { ...token, enabled: false }
+          : token
+      )
+    );
+  };
+
+  const handleExportData = () => {
+    const data = {
+      activeTokens,
+      exportDate: new Date().toISOString(),
+      totalTokens: activeTokens.length,
+      enabledTokens: activeTokens.filter(t => t.enabled).length
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cast-flow-tokens-export.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (!authenticated) {
     return (
-      <div className="card">
-        <h2 className="mb-3">Admin Panel</h2>
-        <p className="small mb-3">Please connect your wallet to access admin panel.</p>
-        <button className="btn" onClick={login}>Connect Wallet</button>
+      <div className="admin-page">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">⚡ Admin Dashboard</h1>
+          </div>
+          <div className="header-actions">
+            <button className="notification-btn">🔔</button>
+            <div className="user-avatar">AD</div>
+          </div>
+        </div>
+        
+        <div className="auth-prompt">
+          <p>Please connect your wallet to access admin dashboard</p>
+          <button className="btn" onClick={login}>Connect Wallet</button>
+        </div>
       </div>
     );
   }
 
-  if (!isAdminUser) {
+  if (!isAdmin) {
     return (
-      <div className="card">
-        <h2 className="mb-3">Admin Panel</h2>
-        <div style={{ 
-          padding: "16px", 
-          backgroundColor: "#fef2f2", 
-          borderRadius: "8px",
-          border: "1px solid #fecaca"
-        }}>
-          <p style={{ margin: 0, color: "#dc2626" }}>
-            ❌ Access Denied: You don't have admin privileges.
-          </p>
+      <div className="admin-page">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">⚡ Admin Dashboard</h1>
+          </div>
+          <div className="header-actions">
+            <button className="notification-btn">🔔</button>
+            <div className="user-avatar">
+              {user?.username ? user.username.substring(0, 2).toUpperCase() : 'JD'}
+            </div>
+          </div>
+        </div>
+        
+        <div className="access-denied">
+          <h2>Access Denied</h2>
+          <p>You don't have admin privileges to access this dashboard.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="card">
-      <h2 className="mb-3">🛠️ Admin Panel</h2>
-      
-      <div style={{ 
-        marginBottom: "24px", 
-        padding: "12px", 
-        backgroundColor: "#dcfce7", 
-        borderRadius: "6px",
-        border: "1px solid #16a34a"
-      }}>
-        <p style={{ margin: 0, color: "#15803d", fontSize: "14px" }}>
-          ✅ Admin Access Granted - Welcome {user?.display_name || user?.username || 'Admin'}!
-        </p>
+    <div className="admin-page">
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">⚡ Admin Dashboard</h1>
+        </div>
+        <div className="header-actions">
+          <button className="notification-btn">🔔</button>
+          <div className="user-avatar">
+            {user?.username ? user.username.substring(0, 2).toUpperCase() : 'AD'}
+          </div>
+        </div>
       </div>
 
-      {/* Token Management Section */}
-      <div style={{ marginBottom: "32px" }}>
-        <h3 style={{ marginBottom: "16px" }}>💰 Unlimited Access Tokens</h3>
-        
-        {/* Current Tokens */}
-        <div style={{ marginBottom: "16px" }}>
-          <h4 style={{ fontSize: "14px", marginBottom: "8px" }}>Current Tokens:</h4>
-          {Object.entries(configs.unlimited_access_tokens || {}).map(([symbol, config]) => (
-            <div key={symbol} style={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center",
-              padding: "8px 12px", 
-              backgroundColor: "#f9fafb", 
-              borderRadius: "4px",
-              marginBottom: "8px"
-            }}>
-              <div>
-                <strong>{symbol}</strong> - {config.min_amount} tokens required
-                <br />
-                <span style={{ fontSize: "12px", color: "#6b7280" }}>
-                  Address: {config.address}
-                </span>
+      <div className="admin-content">
+        {/* Add New Token Section */}
+        <div className="admin-section">
+          <div className="section-header">
+            <h2>💰 Add New Token</h2>
+            <button className="expand-btn">▼</button>
+          </div>
+          
+          <div className="add-token-form">
+            <div className="form-row">
+              <div className="form-group">
+                <label>Contract Address *</label>
+                <input
+                  type="text"
+                  placeholder="0x..."
+                  value={newToken.contractAddress}
+                  onChange={(e) => setNewToken({...newToken, contractAddress: e.target.value})}
+                  className="form-input"
+                />
               </div>
-              <button 
-                onClick={() => removeToken(symbol)}
-                style={{ 
-                  padding: "4px 8px", 
-                  backgroundColor: "#dc2626", 
-                  color: "white", 
-                  border: "none", 
-                  borderRadius: "4px",
-                  fontSize: "12px",
-                  cursor: "pointer"
-                }}
-              >
-                Remove
-              </button>
             </div>
-          ))}
-        </div>
-
-        {/* Add New Token */}
-        <div style={{ 
-          padding: "16px", 
-          backgroundColor: "#f9fafb", 
-          borderRadius: "8px",
-          border: "1px solid #e5e7eb"
-        }}>
-          <h4 style={{ fontSize: "14px", marginBottom: "12px" }}>Add New Token:</h4>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: "8px", alignItems: "end" }}>
-            <div>
-              <label style={{ fontSize: "12px", display: "block", marginBottom: "4px" }}>Symbol</label>
-              <input
-                type="text"
-                placeholder="e.g. MYTOKEN"
-                value={newTokenSymbol}
-                onChange={(e) => setNewTokenSymbol(e.target.value.toUpperCase())}
-                style={{ width: "100%", padding: "6px", fontSize: "12px" }}
-              />
+            
+            <div className="form-row">
+              <div className="form-group">
+                <label>Token Ticker *</label>
+                <input
+                  type="text"
+                  placeholder="USDC"
+                  value={newToken.ticker}
+                  onChange={(e) => setNewToken({...newToken, ticker: e.target.value.toUpperCase()})}
+                  className="form-input"
+                />
+              </div>
             </div>
-            <div>
-              <label style={{ fontSize: "12px", display: "block", marginBottom: "4px" }}>Contract Address</label>
-              <input
-                type="text"
-                placeholder="0x..."
-                value={newTokenAddress}
-                onChange={(e) => setNewTokenAddress(e.target.value)}
-                style={{ width: "100%", padding: "6px", fontSize: "12px" }}
-              />
+            
+            <div className="form-row">
+              <div className="form-group">
+                <label>Token Name *</label>
+                <input
+                  type="text"
+                  placeholder="USD Coin"
+                  value={newToken.name}
+                  onChange={(e) => setNewToken({...newToken, name: e.target.value})}
+                  className="form-input"
+                />
+              </div>
             </div>
-            <div>
-              <label style={{ fontSize: "12px", display: "block", marginBottom: "4px" }}>Min Amount</label>
-              <input
-                type="number"
-                placeholder="1000"
-                value={newTokenAmount}
-                onChange={(e) => setNewTokenAmount(e.target.value)}
-                style={{ width: "100%", padding: "6px", fontSize: "12px" }}
-              />
+            
+            <div className="form-row">
+              <div className="form-group">
+                <label>Blockchain Network *</label>
+                <select
+                  value={newToken.network}
+                  onChange={(e) => setNewToken({...newToken, network: e.target.value})}
+                  className="form-select"
+                >
+                  <option value="">Select Network</option>
+                  <option value="Base">Base</option>
+                  <option value="Ethereum">Ethereum</option>
+                  <option value="Polygon">Polygon</option>
+                  <option value="Arbitrum">Arbitrum</option>
+                </select>
+              </div>
             </div>
-            <button
-              onClick={addToken}
-              style={{ 
-                padding: "6px 12px", 
-                backgroundColor: "#16a34a", 
-                color: "white", 
-                border: "none", 
-                borderRadius: "4px",
-                fontSize: "12px",
-                cursor: "pointer"
-              }}
+            
+            <button 
+              className={`add-token-btn ${loading ? 'loading' : ''}`}
+              onClick={handleAddToken}
+              disabled={loading}
             >
-              Add Token
+              {loading ? 'Adding...' : '➕ Add Token'}
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Admin Address Management */}
-      <div style={{ marginBottom: "32px" }}>
-        <h3 style={{ marginBottom: "16px" }}>👑 Admin Addresses</h3>
-        
-        {/* Current Admins */}
-        <div style={{ marginBottom: "16px" }}>
-          <h4 style={{ fontSize: "14px", marginBottom: "8px" }}>Current Admins:</h4>
-          {(configs.admin_addresses || []).map((addr, index) => (
-            <div key={index} style={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center",
-              padding: "8px 12px", 
-              backgroundColor: "#f9fafb", 
-              borderRadius: "4px",
-              marginBottom: "8px"
-            }}>
-              <span style={{ fontFamily: "monospace", fontSize: "12px" }}>{addr}</span>
-              <button 
-                onClick={() => removeAdminAddress(addr)}
-                style={{ 
-                  padding: "4px 8px", 
-                  backgroundColor: "#dc2626", 
-                  color: "white", 
-                  border: "none", 
-                  borderRadius: "4px",
-                  fontSize: "12px",
-                  cursor: "pointer"
-                }}
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Add New Admin */}
-        <div style={{ 
-          padding: "16px", 
-          backgroundColor: "#f9fafb", 
-          borderRadius: "8px",
-          border: "1px solid #e5e7eb"
-        }}>
-          <h4 style={{ fontSize: "14px", marginBottom: "12px" }}>Add New Admin:</h4>
-          <div style={{ display: "flex", gap: "8px", alignItems: "end" }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: "12px", display: "block", marginBottom: "4px" }}>Wallet Address</label>
-              <input
-                type="text"
-                placeholder="0x..."
-                value={newAdminAddress}
-                onChange={(e) => setNewAdminAddress(e.target.value)}
-                style={{ width: "100%", padding: "6px", fontSize: "12px" }}
-              />
-            </div>
-            <button
-              onClick={addAdminAddress}
-              style={{ 
-                padding: "6px 12px", 
-                backgroundColor: "#16a34a", 
-                color: "white", 
-                border: "none", 
-                borderRadius: "4px",
-                fontSize: "12px",
-                cursor: "pointer"
-              }}
-            >
-              Add Admin
+        {/* Active Tokens Section */}
+        <div className="admin-section">
+          <div className="section-header">
+            <h2>💎 Active Tokens ({activeTokens.length})</h2>
+            <button className="export-btn" onClick={handleExportData}>
+              📥 Export
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* System Stats */}
-      <div>
-        <h3 style={{ marginBottom: "16px" }}>📊 System Statistics</h3>
-        <div style={{ 
-          padding: "16px", 
-          backgroundColor: "#f9fafb", 
-          borderRadius: "8px",
-          border: "1px solid #e5e7eb"
-        }}>
-          <p style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
-            🔧 Admin panel is ready for Cast Flow management
-          </p>
-          <p style={{ margin: "0", fontSize: "12px", color: "#6b7280" }}>
-            Use this panel to manage unlimited access tokens and admin privileges
-          </p>
+          
+          <div className="tokens-list">
+            {activeTokens.map((token) => (
+              <div key={token.id} className="token-card">
+                <div className="token-header">
+                  <div className="token-info">
+                    <div className="token-symbol">{token.symbol}</div>
+                    <div className="token-name">{token.name}</div>
+                    <div className="token-type">{token.type}</div>
+                  </div>
+                  
+                  <div className="token-toggle">
+                    <div 
+                      className={`toggle-switch ${token.enabled ? 'active' : ''}`}
+                      onClick={() => handleToggleToken(token.id)}
+                    >
+                      <div className="toggle-slider"></div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="token-address">
+                  {token.address}
+                  <button className="copy-btn">📋</button>
+                </div>
+                
+                <div className="token-stats">
+                  <div className="stat-item">
+                    <span className="stat-number">{token.activeConfigs}</span>
+                    <span className="stat-label">Active Configs</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-number">${token.totalTipped.toLocaleString()}</span>
+                    <span className="stat-label">Total Tipped</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-number">{token.users}</span>
+                    <span className="stat-label">Users</span>
+                  </div>
+                </div>
+                
+                <div className="token-actions">
+                  <button className="action-btn view-btn">👁 View</button>
+                  <button 
+                    className="action-btn disable-btn"
+                    onClick={() => handleDisableToken(token.id)}
+                  >
+                    ⚠️ Disable
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

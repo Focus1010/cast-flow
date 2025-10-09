@@ -4,56 +4,139 @@ import { useAuth } from "../contexts/AuthContext";
 
 export default function TipsPage() {
   const { user, authenticated, login } = useAuth();
-  const [token, setToken] = useState("USDC");
-  const [amount, setAmount] = useState("");
-  const [limit, setLimit] = useState("");
+  
+  // State for form
   const [selectedPost, setSelectedPost] = useState("");
-  const [actions, setActions] = useState({ like: false, repost: false, comment: false });
-  const [configs, setConfigs] = useState([]);
+  const [selectedToken, setSelectedToken] = useState("ETH");
+  const [tipAmount, setTipAmount] = useState("0.001");
+  const [maxRecipients, setMaxRecipients] = useState(10);
+  const [actions, setActions] = useState({
+    likes: true,
+    recast: false,
+    comments: false
+  });
+  
+  // State for data
   const [posts, setPosts] = useState([]);
+  const [activeTips, setActiveTips] = useState([]);
+  const [loading, setLoading] = useState(false);
 
+  // Token options with current balances and USD values
+  const tokens = [
+    {
+      symbol: "ETH",
+      name: "Ethereum",
+      balance: "0.025 ETH",
+      usdValue: "$64.50",
+      icon: "⟠"
+    },
+    {
+      symbol: "USDC",
+      name: "USD Coin",
+      balance: "150.00 USDC",
+      usdValue: "$150.00",
+      icon: "💵"
+    },
+    {
+      symbol: "FCS",
+      name: "Farcaster Token",
+      balance: "1,250 FCS",
+      usdValue: "$125.00",
+      icon: "🟣"
+    },
+    {
+      symbol: "ENB",
+      name: "ENB Token",
+      balance: "500 ENB",
+      usdValue: "$75.00",
+      icon: "🔷"
+    }
+  ];
+
+  // Calculate USD equivalent for tip amount
+  const getUsdEquivalent = () => {
+    const rate = selectedToken === "ETH" ? 2580 : 
+                 selectedToken === "USDC" ? 1 :
+                 selectedToken === "FCS" ? 0.1 : 0.15;
+    
+    return `$${(parseFloat(tipAmount) * rate).toFixed(2)}`;
+  };
+
+  // Calculate total budget
+  const getTotalBudget = () => {
+    const total = parseFloat(tipAmount) * maxRecipients;
+    const usdTotal = parseFloat(getUsdEquivalent().replace('$', '')) * maxRecipients;
+    return `${total.toFixed(3)} ${selectedToken} (~$${usdTotal.toFixed(2)})`;
+  };
+
+  // Mock scheduled posts
   useEffect(() => {
     if (user) {
-      supabase.from('scheduled_posts').select('*').eq('user_id', user.fid).then(({ data }) => setPosts(data || []));
-      supabase.from('tip_pools').select('*').eq('creator_fid', user.fid.toString()).then(({ data }) => setConfigs(data || []));
+      // Load real posts from database
+      supabase.from('scheduled_posts').select('*').eq('user_id', user.fid).then(({ data }) => {
+        setPosts(data || []);
+      });
+      
+      // Load active tip configurations
+      supabase.from('tip_pools').select('*').eq('creator_fid', user.fid.toString()).then(({ data }) => {
+        setActiveTips(data || []);
+      });
+    } else {
+      // Mock data for demo
+      setPosts([
+        { id: 1, posts: ["Just shipped a new feature for Cast Flow! The micro-tip..."] },
+        { id: 2, posts: ["Building the future of decentralized social media. Crypto..."] },
+        { id: 3, posts: ["GM Farcaster! Ready to schedule some amazing content..."] }
+      ]);
     }
   }, [user]);
 
-  const handleSaveConfig = async () => {
-    if (!user || !selectedPost || !amount || !limit || !Object.values(actions).some(v => v)) {
-      return alert("Please fill all fields and select at least one action.");
+  const handleSaveTipConfig = async () => {
+    if (!authenticated) {
+      login();
+      return;
     }
 
+    if (!selectedPost) {
+      alert("Please select a post to tip");
+      return;
+    }
+
+    if (!Object.values(actions).some(v => v)) {
+      alert("Please select at least one action to reward");
+      return;
+    }
+
+    setLoading(true);
     try {
-      // Use the new tip_pools table structure
-      const newConfig = { 
+      const tipConfig = {
         post_id: parseInt(selectedPost),
         creator_fid: user.fid.toString(),
-        token_address: getTokenAddress(token),
-        token_symbol: token,
-        amount_per_user: parseFloat(amount),
-        max_recipients: parseInt(limit),
+        token_address: getTokenAddress(selectedToken),
+        token_symbol: selectedToken,
+        amount_per_user: parseFloat(tipAmount),
+        max_recipients: maxRecipients,
         interaction_types: actions
       };
 
-      const { data, error } = await supabase.from('tip_pools').insert(newConfig).select().single();
+      const { data, error } = await supabase.from('tip_pools').insert(tipConfig).select().single();
       
-      if (error) {
-        console.error('Error saving tip config:', error);
-        alert('Failed to save tip configuration: ' + error.message);
-        return;
-      }
+      if (error) throw error;
 
-      setConfigs([...configs, data]);
-      setAmount(""); 
-      setLimit(""); 
-      setActions({ like: false, repost: false, comment: false });
+      setActiveTips([...activeTips, data]);
+      alert('Tip configuration saved successfully!');
+      
+      // Reset form
       setSelectedPost("");
-      alert("✅ Tip configuration saved successfully!");
+      setTipAmount("0.001");
+      setMaxRecipients(10);
+      setActions({ likes: true, recast: false, comments: false });
       
     } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to save configuration: ' + error.message);
+      console.error('Error saving tip config:', error);
+      alert('Failed to save tip configuration');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,182 +151,208 @@ export default function TipsPage() {
     return addresses[symbol] || '0x0000000000000000000000000000000000000000';
   };
 
-  const removeConfig = async (id) => {
-    if (window.confirm("Delete tip pool configuration?")) {
-      const { error } = await supabase.from('tip_pools').delete().eq('id', id);
-      if (!error) {
-        setConfigs(configs.filter(c => c.id !== id));
-        alert("✅ Tip pool configuration deleted!");
-      } else {
-        alert("❌ Failed to delete configuration: " + error.message);
-      }
-    }
-  };
-
-  return (
-    <div className="card">
-      <h2 className="mb-3">Tips Configuration</h2>
-
-      {!authenticated ? (
-        <div>
-          <div className="tag mb-3">⚠️ Sign in to configure tips.</div>
+  if (!authenticated) {
+    return (
+      <div className="tips-page">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">💰 Tips Configuration</h1>
+            <p className="page-subtitle">Reward engagement on your posts</p>
+          </div>
+          <div className="header-actions">
+            <button className="notification-btn">🔔</button>
+            <div className="user-avatar">JD</div>
+          </div>
+        </div>
+        
+        <div className="auth-prompt">
+          <p>Please connect your wallet to configure micro-tips</p>
           <button className="btn" onClick={login}>Connect Wallet</button>
         </div>
-      ) : (
-        <>
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
-              Choose Post
-            </label>
-            <select className="input" value={selectedPost} onChange={(e) => setSelectedPost(e.target.value)}>
-              <option value="">-- Select --</option>
-              {posts.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.posts[0].slice(0, 40)}... ({new Date(p.datetime).toLocaleString()})
+      </div>
+    );
+  }
+
+  return (
+    <div className="tips-page">
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">💰 Tips Configuration</h1>
+          <p className="page-subtitle">Reward engagement on your posts</p>
+        </div>
+        <div className="header-actions">
+          <button className="notification-btn">🔔</button>
+          <div className="user-avatar">JD</div>
+        </div>
+      </div>
+
+      <div className="tips-content">
+        {/* Choose Post Section */}
+        <div className="tips-section">
+          <div className="section-header">
+            <h2>📝 Choose Post to Tip</h2>
+          </div>
+          
+          <div className="post-selector">
+            <select 
+              className="post-select"
+              value={selectedPost}
+              onChange={(e) => setSelectedPost(e.target.value)}
+            >
+              <option value="">Select a scheduled post...</option>
+              {posts.map((post) => (
+                <option key={post.id} value={post.id}>
+                  {post.posts?.[0]?.substring(0, 50) || 'Post content'}...
                 </option>
               ))}
             </select>
           </div>
+        </div>
 
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
-              Token
-            </label>
-            <select className="input" value={token} onChange={(e) => setToken(e.target.value)}>
-              <option value="ETH">ETH</option>
-              <option value="USDC">USDC</option>
-              <option value="FCS">FCS</option>
-              <option value="ENB">ENB</option>
+        {/* Select Token Section */}
+        <div className="tips-section">
+          <div className="section-header">
+            <h2>🪙 Select Token</h2>
+          </div>
+          
+          <div className="token-selector">
+            <select 
+              className="token-select"
+              value={selectedToken}
+              onChange={(e) => setSelectedToken(e.target.value)}
+            >
+              {tokens.map((token) => (
+                <option key={token.symbol} value={token.symbol}>
+                  {token.icon} {token.symbol} • {token.balance} • {token.usdValue}
+                </option>
+              ))}
             </select>
           </div>
+        </div>
 
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
-              Amount per User
-            </label>
-            <input type="number" className="input" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 100" />
+        {/* Amount Settings Section */}
+        <div className="tips-section">
+          <div className="section-header">
+            <h2>💵 Amount Settings</h2>
           </div>
-
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
-              Max Recipients
-            </label>
-            <input type="number" className="input" value={limit} onChange={(e) => setLimit(e.target.value)} placeholder="e.g. 100" />
-          </div>
-
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: 12, fontWeight: 600 }}>
-              Actions (Select which actions trigger tips)
-            </label>
-            <div style={{ 
-              display: "grid", 
-              gridTemplateColumns: "1fr 1fr 1fr", 
-              gap: "16px",
-              padding: "16px",
-              backgroundColor: "rgba(124, 58, 237, 0.1)",
-              borderRadius: "8px"
-            }}>
-              <label style={{ 
-                display: "flex", 
-                alignItems: "center", 
-                gap: "8px", 
-                cursor: "pointer",
-                padding: "12px",
-                backgroundColor: actions.like ? "rgba(124, 58, 237, 0.2)" : "transparent",
-                borderRadius: "6px",
-                border: actions.like ? "2px solid #7c3aed" : "2px solid transparent",
-                transition: "all 0.2s ease"
-              }}>
-                <input 
-                  type="checkbox" 
-                  checked={actions.like} 
-                  onChange={() => setActions({ ...actions, like: !actions.like })}
-                  style={{ 
-                    width: "20px", 
-                    height: "20px", 
-                    accentColor: "#7c3aed" 
-                  }}
-                />
-                <span style={{ fontWeight: 500 }}>❤️ Likes</span>
-              </label>
-              <label style={{ 
-                display: "flex", 
-                alignItems: "center", 
-                gap: "8px", 
-                cursor: "pointer",
-                padding: "12px",
-                backgroundColor: actions.repost ? "rgba(124, 58, 237, 0.2)" : "transparent",
-                borderRadius: "6px",
-                border: actions.repost ? "2px solid #7c3aed" : "2px solid transparent",
-                transition: "all 0.2s ease"
-              }}>
-                <input 
-                  type="checkbox" 
-                  checked={actions.repost} 
-                  onChange={() => setActions({ ...actions, repost: !actions.repost })}
-                  style={{ 
-                    width: "20px", 
-                    height: "20px", 
-                    accentColor: "#7c3aed" 
-                  }}
-                />
-                <span style={{ fontWeight: 500 }}>🔄 Reposts</span>
-              </label>
-              <label style={{ 
-                display: "flex", 
-                alignItems: "center", 
-                gap: "8px", 
-                cursor: "pointer",
-                padding: "12px",
-                backgroundColor: actions.comment ? "rgba(124, 58, 237, 0.2)" : "transparent",
-                borderRadius: "6px",
-                border: actions.comment ? "2px solid #7c3aed" : "2px solid transparent",
-                transition: "all 0.2s ease"
-              }}>
-                <input 
-                  type="checkbox" 
-                  checked={actions.comment} 
-                  onChange={() => setActions({ ...actions, comment: !actions.comment })}
-                  style={{ 
-                    width: "20px", 
-                    height: "20px", 
-                    accentColor: "#7c3aed" 
-                  }}
-                />
-                <span style={{ fontWeight: 500 }}>💬 Comments</span>
-              </label>
+          
+          <div className="amount-settings">
+            <div className="amount-input-group">
+              <input
+                type="number"
+                className="amount-input"
+                value={tipAmount}
+                onChange={(e) => setTipAmount(e.target.value)}
+                step="0.001"
+                min="0.001"
+              />
+              <span className="amount-currency">{selectedToken}</span>
+            </div>
+            
+            <div className="usd-equivalent">
+              ≈ {getUsdEquivalent()} per tip
+            </div>
+            
+            <div className="recipients-control">
+              <label className="recipients-label">Max Recipients</label>
+              <div className="recipients-input-group">
+                <button 
+                  className="recipients-btn"
+                  onClick={() => setMaxRecipients(Math.max(1, maxRecipients - 1))}
+                >
+                  −
+                </button>
+                <span className="recipients-count">{maxRecipients}</span>
+                <button 
+                  className="recipients-btn"
+                  onClick={() => setMaxRecipients(maxRecipients + 1)}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+            
+            <div className="total-budget">
+              <span className="budget-label">Total Budget</span>
+              <span className="budget-amount">{getTotalBudget()}</span>
             </div>
           </div>
+        </div>
 
-          <button className="btn" onClick={handleSaveConfig}>Save</button>
+        {/* Actions Section */}
+        <div className="tips-section">
+          <div className="section-header">
+            <h2>💖 Actions</h2>
+          </div>
+          
+          <div className="actions-grid">
+            <button 
+              className={`action-btn ${actions.likes ? 'active' : ''}`}
+              onClick={() => setActions({...actions, likes: !actions.likes})}
+            >
+              <span className="action-icon">👍</span>
+              <span className="action-label">Likes</span>
+            </button>
+            
+            <button 
+              className={`action-btn ${actions.recast ? 'active' : ''}`}
+              onClick={() => setActions({...actions, recast: !actions.recast})}
+            >
+              <span className="action-icon">🔄</span>
+              <span className="action-label">Recast</span>
+            </button>
+            
+            <button 
+              className={`action-btn ${actions.comments ? 'active' : ''}`}
+              onClick={() => setActions({...actions, comments: !actions.comments})}
+            >
+              <span className="action-icon">💬</span>
+              <span className="action-label">Comments</span>
+            </button>
+          </div>
+        </div>
 
-          <div style={{ marginTop: "24px" }}>
-            <h3>Saved Configurations</h3>
-            {configs.length === 0 ? (
-              <p className="small">No configs yet.</p>
+        {/* Save Button */}
+        <button 
+          className={`save-tips-btn ${loading ? 'loading' : ''}`}
+          onClick={handleSaveTipConfig}
+          disabled={loading}
+        >
+          {loading ? 'Saving...' : 'Save Tip Configuration'}
+        </button>
+
+        {/* Active Tips Section */}
+        <div className="tips-section">
+          <div className="section-header">
+            <h2>📋 Active Tips</h2>
+          </div>
+          
+          <div className="active-tips-list">
+            {activeTips.length === 0 ? (
+              <div className="empty-state">
+                <p>Just shipped a new feature for Cast Flow! The micro-tip...</p>
+                <div className="tip-status">
+                  <span className="status-indicator"></span>
+                  <span className="status-text">🔴 ⚠️</span>
+                </div>
+              </div>
             ) : (
-              <ul style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px" }}>
-                {configs.map((cfg) => (
-                  <li key={cfg.id} className="list-item">
-                    <div>
-                      <p><b>Post:</b> {posts.find(p => p.id === cfg.post_id)?.posts[0]?.slice(0, 40) || 'Post not found'}...</p>
-                      <p><b>Token:</b> {cfg.token_symbol} | <b>Amount per User:</b> {cfg.amount_per_user} | <b>Max Recipients:</b> {cfg.max_recipients}</p>
-                      <p><b>Actions:</b> {Object.keys(cfg.interaction_types || {}).filter(k => cfg.interaction_types[k]).join(", ") || 'None'}</p>
-                      <p style={{ fontSize: "12px", color: "#6b7280" }}>
-                        <b>Created:</b> {new Date(cfg.created_at).toLocaleDateString()} | 
-                        <b> Expires:</b> {new Date(cfg.expires_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <button className="btn-ghost" style={{ color: "red" }} onClick={() => removeConfig(cfg.id)}>
-                      🗑 Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              activeTips.map((tip) => (
+                <div key={tip.id} className="active-tip-item">
+                  <div className="tip-preview">
+                    {posts.find(p => p.id === tip.post_id)?.posts?.[0]?.substring(0, 50) || 'Post content'}...
+                  </div>
+                  <div className="tip-status">
+                    <span className="status-indicator active"></span>
+                    <span className="status-text">Active</span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

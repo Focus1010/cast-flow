@@ -52,14 +52,14 @@ serve(async (req) => {
           : post.posts
 
         // Prepare cast data
-        const castData = {
+        const castData: any = {
           signer_uuid: user.signer_uuid,
           text: castContent
         }
 
         // Add images if they exist
         if (post.images && post.images.length > 0) {
-          castData.embeds = post.images.map(imageUrl => ({ url: imageUrl }))
+          castData.embeds = post.images.map((imageUrl: string) => ({ url: imageUrl }))
         }
 
         // Post via Neynar
