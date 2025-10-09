@@ -60,25 +60,16 @@ export default function MyApp({ Component, pageProps }) {
       console.warn('Farcaster SDK initialization failed:', error);
     });
     
-    // Prevent wallet conflicts and provider issues
+    // Handle wallet provider conflicts gracefully without overriding Object.defineProperty
     if (typeof window !== 'undefined') {
-      // Prevent multiple ethereum providers from conflicting
-      const originalDefineProperty = Object.defineProperty;
-      Object.defineProperty = function(obj, prop, descriptor) {
-        if (prop === 'ethereum' && obj === window) {
-          console.warn('Preventing ethereum provider redefinition');
-          return obj;
-        }
-        return originalDefineProperty.call(this, obj, prop, descriptor);
-      };
-
       // Handle ethereum provider conflicts gracefully
       const handleError = (event) => {
         const errorMsg = event.error?.message || '';
         if (errorMsg.includes('ethereum') || 
             errorMsg.includes('Cannot redefine property') ||
-            errorMsg.includes('Cannot set property ethereum')) {
-          console.warn('Wallet provider conflict detected, continuing...');
+            errorMsg.includes('Cannot set property ethereum') ||
+            errorMsg.includes('Cannot convert object to primitive value')) {
+          console.warn('Provider/conversion error detected, continuing...', errorMsg);
           event.preventDefault();
           event.stopPropagation();
           return false;
@@ -90,8 +81,9 @@ export default function MyApp({ Component, pageProps }) {
         const errorMsg = event.reason?.message || '';
         if (errorMsg.includes('ethereum') ||
             errorMsg.includes('Cannot redefine property') ||
-            errorMsg.includes('Cannot set property ethereum')) {
-          console.warn('Wallet provider promise rejection, continuing...');
+            errorMsg.includes('Cannot set property ethereum') ||
+            errorMsg.includes('Cannot convert object to primitive value')) {
+          console.warn('Provider/conversion promise rejection, continuing...', errorMsg);
           event.preventDefault();
           return false;
         }

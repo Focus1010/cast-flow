@@ -7,8 +7,9 @@ import { useRouter } from 'next/router';
 export default function MorePage() {
   const { user, authenticated, login, logout } = useAuth();
   const router = useRouter();
-  // Check if user is admin
-  const isAdmin = user?.fid === Number(process.env.NEXT_PUBLIC_ADMIN_FID);
+  // Check if user is admin - safely handle FID comparison
+  const isAdmin = user?.fid && process.env.NEXT_PUBLIC_ADMIN_FID ? 
+    String(user.fid) === String(process.env.NEXT_PUBLIC_ADMIN_FID) : false;
 
   const menuItems = [
     {
@@ -33,7 +34,8 @@ export default function MorePage() {
       id: 'wallet',
       icon: '🔗',
       title: 'Wallet Connected',
-      subtitle: user?.wallet ? `${user.wallet.substring(0, 6)}...${user.wallet.substring(user.wallet.length - 4)}` : '0x1234...5678',
+      subtitle: user?.wallet && typeof user.wallet === 'string' ? 
+        `${user.wallet.substring(0, 6)}...${user.wallet.substring(user.wallet.length - 4)}` : '0x1234...5678',
       toggle: true,
       isActive: authenticated
     },
@@ -97,7 +99,7 @@ export default function MorePage() {
             <div className="profile-name">
               {user?.display_name || user?.username || 'johndoe.eth'}
             </div>
-            <div className="profile-fid">FID: {user?.fid || '12345'}</div>
+            <div className="profile-fid">FID: {user?.fid ? String(user.fid) : '12345'}</div>
           </div>
           <div className="online-indicator"></div>
         </div>

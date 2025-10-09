@@ -35,16 +35,20 @@ export const AuthProvider = ({ children }) => {
         console.log('Farcaster user:', farcasterUser);
         console.log('Farcaster context:', farcasterContext);
         
-        if (farcasterUser) {
-          // User is in Farcaster environment
+        if (farcasterUser && typeof farcasterUser === 'object' && farcasterUser.fid) {
+          // User is in Farcaster environment - safely extract data
+          const safeFid = typeof farcasterUser.fid === 'object' ? 
+            (farcasterUser.fid.toString ? farcasterUser.fid.toString() : String(farcasterUser.fid)) : 
+            farcasterUser.fid;
+          
           const userData = {
-            fid: farcasterUser.fid,
+            fid: safeFid,
             wallet: farcasterUser.custody_address || address,
             isConnected: true,
             username: farcasterUser.username || 'User',
             display_name: farcasterUser.display_name || 'Farcaster User',
             bio: farcasterUser.profile?.bio?.text || 'Farcaster user',
-            pfp_url: farcasterUser.pfp_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${farcasterUser.fid}`,
+            pfp_url: farcasterUser.pfp_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${safeFid}`,
             follower_count: farcasterUser.follower_count || 0,
             following_count: farcasterUser.following_count || 0,
             custody_address: farcasterUser.custody_address || '',
