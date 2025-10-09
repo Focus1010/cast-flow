@@ -35,6 +35,28 @@ export default function Document() {
         {/* Favicon */}
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/icon.png" />
+        
+        {/* Mobile debugging script */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // Mobile debugging
+            console.log('Cast Flow loading on:', navigator.userAgent);
+            
+            // Catch and log all errors
+            window.addEventListener('error', function(e) {
+              console.error('Global error:', e.error, e.filename, e.lineno);
+            });
+            
+            window.addEventListener('unhandledrejection', function(e) {
+              console.error('Unhandled promise rejection:', e.reason);
+            });
+            
+            // Log when DOM is ready
+            document.addEventListener('DOMContentLoaded', function() {
+              console.log('DOM loaded successfully');
+            });
+          `
+        }} />
       </Head>
       <body>
         <Main />
