@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useAccount, useConnect } from 'wagmi';
+import { useAccount, useConnect, useWriteContract } from 'wagmi';
 import { ethers } from 'ethers';
 import { useAuth } from "../contexts/AuthContext";
 import Logo from "../components/Logo";
@@ -8,7 +8,6 @@ import { supabase } from '../lib/supabase';
 import { TIPPING_CONTRACT_ABI, ERC20_ABI, CONTRACT_ADDRESSES } from '../utils/contractABI';
 
 export default function PackagesPage() {
-{{ ... }}
   const { user, authenticated, login } = useAuth();
   const { address, isConnected } = useAccount();
   const { writeContract } = useWriteContract();
