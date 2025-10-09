@@ -60,24 +60,37 @@ export default function MyApp({ Component, pageProps }) {
       console.warn('Farcaster SDK initialization failed:', error);
     });
     
-    // Prevent wallet conflicts
+    // Prevent wallet conflicts and provider issues
     if (typeof window !== 'undefined') {
+      // Prevent multiple ethereum providers from conflicting
+      const originalDefineProperty = Object.defineProperty;
+      Object.defineProperty = function(obj, prop, descriptor) {
+        if (prop === 'ethereum' && obj === window) {
+          console.warn('Preventing ethereum provider redefinition');
+          return obj;
+        }
+        return originalDefineProperty.call(this, obj, prop, descriptor);
+      };
+
       // Handle ethereum provider conflicts gracefully
       const handleError = (event) => {
-        console.error('App error:', event.error);
-        if (event.error?.message?.includes('ethereum') || 
-            event.error?.message?.includes('Cannot redefine property')) {
+        const errorMsg = event.error?.message || '';
+        if (errorMsg.includes('ethereum') || 
+            errorMsg.includes('Cannot redefine property') ||
+            errorMsg.includes('Cannot set property ethereum')) {
           console.warn('Wallet provider conflict detected, continuing...');
           event.preventDefault();
+          event.stopPropagation();
           return false;
         }
       };
       
-      window.addEventListener('error', handleError);
+      window.addEventListener('error', handleError, true);
       window.addEventListener('unhandledrejection', (event) => {
-        console.error('Unhandled rejection:', event.reason);
-        if (event.reason?.message?.includes('ethereum') ||
-            event.reason?.message?.includes('Cannot redefine property')) {
+        const errorMsg = event.reason?.message || '';
+        if (errorMsg.includes('ethereum') ||
+            errorMsg.includes('Cannot redefine property') ||
+            errorMsg.includes('Cannot set property ethereum')) {
           console.warn('Wallet provider promise rejection, continuing...');
           event.preventDefault();
           return false;

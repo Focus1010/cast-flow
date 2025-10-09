@@ -9,12 +9,6 @@ export default function ProfilePage() {
   const { user, authenticated, login } = useAuth();
   const { address } = useAccount();
   
-  // State for user stats
-  const [userStats, setUserStats] = useState({
-    postsScheduled: 127,
-    tipsReceived: 2450
-  });
-  
   // State for package info
   const [packageInfo, setPackageInfo] = useState({
     plan: "Pro",
@@ -215,20 +209,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">📝</div>
-            <div className="stat-number">{userStats.postsScheduled}</div>
-            <div className="stat-label">Posts Scheduled</div>
-          </div>
-          
-          <div className="stat-card">
-            <div className="stat-icon">💰</div>
-            <div className="stat-number">${userStats.tipsReceived.toLocaleString()}</div>
-            <div className="stat-label">Tips Received</div>
-          </div>
-        </div>
 
         {/* Connected Wallet */}
         <div className="wallet-section">

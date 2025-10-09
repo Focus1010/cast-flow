@@ -22,13 +22,59 @@ export default function SchedulerPage() {
   // State for package info
   const [packageInfo, setPackageInfo] = useState({
     plan: "Free Plan",
-    used: 3,
+    used: 0,
     total: 10
   });
   
   // State for scheduled posts
   const [scheduledPosts, setScheduledPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Load user data and package info
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (user?.fid) {
+        try {
+          // Load user's package info
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('package_type, monthly_used')
+            .eq('fid', user.fid)
+            .single();
+
+          if (userData) {
+            const packageLimits = {
+              'free': 10,
+              'basic': 30,
+              'pro': 100,
+              'elite': 300
+            };
+
+            setPackageInfo({
+              plan: userData.package_type || 'free',
+              used: userData.monthly_used || 0,
+              total: packageLimits[userData.package_type] || 10
+            });
+          }
+
+          // Load scheduled posts
+          const { data: posts, error: postsError } = await supabase
+            .from('scheduled_posts')
+            .select('*')
+            .eq('user_fid', user.fid)
+            .order('created_at', { ascending: false });
+
+          if (posts) {
+            setScheduledPosts(posts);
+          }
+        } catch (error) {
+          console.error('Error loading user data:', error);
+        }
+      }
+    };
+
+    loadUserData();
+  }, [user]);
 
   // Handle thread post content changes
   const handlePostChange = (id, content) => {
@@ -79,9 +125,10 @@ export default function SchedulerPage() {
       const { data, error } = await supabase
         .from('scheduled_posts')
         .insert({
-          user_id: user.fid,
-          posts: validPosts.map(p => p.content),
-          datetime: scheduledDateTime.toISOString(),
+          user_fid: user.fid,
+          content: validPosts[0].content,
+          thread_posts: validPosts.length > 1 ? validPosts.slice(1).map(p => ({ content: p.content })) : null,
+          scheduled_time: scheduledDateTime.toISOString(),
           status: 'scheduled'
         })
         .select();

@@ -15,7 +15,8 @@ export const getUserInitials = (user, fallback = 'U') => {
     
     // Try fid
     if (user.fid) {
-      return `U${user.fid.toString().slice(-1)}`;
+      const fidStr = String(user.fid);
+      return `U${fidStr.slice(-1)}`;
     }
     
     return fallback;
