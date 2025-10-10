@@ -16,9 +16,18 @@ export const AuthProvider = ({ children }) => {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({
+    fid: 'demo',
+    username: 'demo_user',
+    display_name: 'Demo User',
+    bio: 'Demo user for testing',
+    pfp_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=demo',
+    follower_count: 0,
+    following_count: 0,
+    wallet: null
+  });
   const [loading, setLoading] = useState(false);
-  const [authenticated, setAuthenticated] = useState(false);
+  const [authenticated, setAuthenticated] = useState(true); // Default to true so app always shows content
 
   useEffect(() => {
     const initializeAuth = async () => {
