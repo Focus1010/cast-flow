@@ -41,7 +41,7 @@ const BottomNavigation = () => {
       label: 'More',
       icon: '⚙️',
       path: '/more',
-      active: router.pathname === '/more' || router.pathname === '/packages' || (router.pathname === '/admin' && isAdmin)
+      active: router.pathname === '/more' || (router.pathname === '/admin' && isAdmin)
     }
   ];
 

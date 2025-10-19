@@ -13,15 +13,6 @@ export default function MorePage() {
 
   const menuItems = [
     {
-      id: 'packages',
-      icon: '💎',
-      title: 'Packages',
-      subtitle: 'Subscription plans',
-      badge: 'FREE',
-      action: () => router.push('/packages'),
-      hasArrow: true
-    },
-    {
       id: 'admin',
       icon: '⚡',
       title: 'Admin Dashboard',

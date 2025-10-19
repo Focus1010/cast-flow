@@ -20,7 +20,7 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 - **Thread Composer**: Create multi-post threads with individual text and images
 - **Flexible Timing**: Schedule posts days or weeks in advance
 - **Automated Posting**: GitHub Actions-powered cron jobs ensure reliable post delivery every 15 minutes
-- **Package System**: Free tier (10 posts/month) with upgradable plans for power users
+- **Unlimited Scheduling**: Schedule as many posts as you need
 
 ### 💰 Micro-Tipping System
 - **Customizable Tip Pools**: Set up rewards for any scheduled post
@@ -29,9 +29,9 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 - **Auto-Refund Protection**: Unclaimed tips automatically refund after 30 days
 
 ### 🎯 Token-Gated Access
-- **Unlimited Posting**: Token holders bypass monthly post limits
+- **Enhanced Features**: Token holders get premium access and benefits
 - **Dynamic Configuration**: Admin panel for managing access requirements
-- **Multi-Token Support**: Integrate your project's token for exclusive benefits
+- **Multi-Token Support**: Integrate your project's token for exclusive features
 
 ### 👤 User Profiles & Leaderboard
 - **Activity Tracking**: Monitor your scheduled posts and engagement
@@ -193,7 +193,10 @@ See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for detailed instructions on de
 
 **Connect:**
 - Farcaster: [@web3focus]
-- GitHub: [Your GitHub]
+- GitHub: [Focus1010]
+- Discord: [Focus3547]
+- Twitter: [@justfocus672]
+
 
 ### Built With Love For
 - The Farcaster community

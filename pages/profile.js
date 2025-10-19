@@ -9,13 +9,6 @@ export default function ProfilePage() {
   const { user, authenticated, login } = useAuth();
   const { address } = useAccount();
   
-  // State for package info
-  const [packageInfo, setPackageInfo] = useState({
-    plan: "Pro",
-    used: 15,
-    total: 30
-  });
-  
   // State for claimable amounts
   const [claimableAmounts, setClaimableAmounts] = useState({
     ETH: "0.5",
@@ -41,29 +34,8 @@ export default function ProfilePage() {
 
   const loadUserData = async () => {
     try {
-      // Load package info
       const userFid = typeof user.fid === 'object' ? user.fid.toString() : user.fid;
-      const { data: userData } = await supabase
-        .from('users')
-        .select('package_type, monthly_used')
-        .eq('fid', userFid)
-        .single();
-
-      if (userData) {
-        const packageLimits = {
-          'free': 10,
-          'starter': 15,
-          'pro': 30,
-          'elite': 60
-        };
-
-        setPackageInfo({
-          plan: userData.package_type || 'free',
-          used: userData.monthly_used || 0,
-          total: packageLimits[userData.package_type] || 10
-        });
-      }
-
+      
       // Load claimable tips from smart contract
       if (address) {
         try {
@@ -129,10 +101,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleUpgradePlan = () => {
-    // Navigate to packages page
-    window.location.href = '/packages';
-  };
 
   if (!authenticated) {
     return (
@@ -209,32 +177,6 @@ export default function ProfilePage() {
               {address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : '0x742d...7CcE'}
             </div>
             <button className="copy-btn">📋</button>
-          </div>
-        </div>
-
-        {/* Current Plan */}
-        <div className="plan-section">
-          <div className="section-header">
-            <h3>💎 Current Plan</h3>
-            <div className="plan-badge">{packageInfo.plan}</div>
-          </div>
-          
-          <div className="plan-card">
-            <div className="plan-usage">
-              <span className="usage-text">
-                {packageInfo.used}/{packageInfo.total} posts used this month
-              </span>
-              <div className="usage-bar">
-                <div 
-                  className="usage-progress" 
-                  style={{ width: `${(packageInfo.used / packageInfo.total) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-            
-            <button className="upgrade-plan-btn" onClick={handleUpgradePlan}>
-              Upgrade Plan
-            </button>
           </div>
         </div>
 

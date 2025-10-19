@@ -19,45 +19,17 @@ export default function SchedulerPage() {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("14:30");
   
-  // State for package info
-  const [packageInfo, setPackageInfo] = useState({
-    plan: "Free Plan",
-    used: 0,
-    total: 10
-  });
-  
   // State for scheduled posts
   const [scheduledPosts, setScheduledPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load user data and package info
+  // Load scheduled posts
   useEffect(() => {
     const loadUserData = async () => {
       if (user?.fid) {
         try {
-          // Load user's package info
           const userFid = typeof user.fid === 'object' ? user.fid.toString() : user.fid;
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('package_type, monthly_used')
-            .eq('fid', userFid)
-            .single();
-
-          if (userData) {
-            const packageLimits = {
-              'free': 10,
-              'basic': 30,
-              'pro': 100,
-              'elite': 300
-            };
-
-            setPackageInfo({
-              plan: userData.package_type || 'free',
-              used: userData.monthly_used || 0,
-              total: packageLimits[userData.package_type] || 10
-            });
-          }
-
+          
           // Load scheduled posts
           const { data: posts, error: postsError } = await supabase
             .from('scheduled_posts')
@@ -158,13 +130,6 @@ export default function SchedulerPage() {
     }
   };
 
-  // Load user data and package info
-  useEffect(() => {
-    if (user) {
-      // Load package info and usage
-      // This would connect to your existing package system
-    }
-  }, [user]);
 
   // Set default date to today
   useEffect(() => {
@@ -218,24 +183,6 @@ export default function SchedulerPage() {
       </div>
 
       <div className="scheduler-content">
-        {/* Package Status Banner */}
-        <div className="package-banner">
-          <div className="package-info">
-            <div className="package-icon">📦</div>
-            <div className="package-details">
-              <div className="package-name">{packageInfo.plan}</div>
-              <div className="package-usage">{packageInfo.used}/{packageInfo.total} posts used</div>
-              <div className="usage-bar">
-                <div 
-                  className="usage-progress" 
-                  style={{ width: `${(packageInfo.used / packageInfo.total) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-          <button className="upgrade-btn">Upgrade</button>
-        </div>
-
         {/* Compose Thread Section */}
         <div className="compose-section">
           <div className="section-header">
