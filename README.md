@@ -43,21 +43,78 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 
 ## 🚀 How It Works
 
-### For Content Creators
+### **Complete Workflow**
 
-1. **Connect Your Wallet**: Link your Farcaster account and Base wallet
-2. **Create a Signer**: Grant Cast Flow permission to post on your behalf
-3. **Compose Your Thread**: Write your content and upload images
-4. **Set Your Schedule**: Choose when you want your posts to go live
-5. **Configure Tips** (Optional): Create reward pools to incentivize engagement
-6. **Relax**: Your content posts automatically while you focus on building
+#### **1. Initial Setup** 🔐
+- **Connect Wallet**: Open Cast Flow in Farcaster and connect your Base wallet via Wagmi
+- **Authentication**: Your Farcaster ID (FID) and wallet address are automatically detected
+- **Create Signer**: One-time setup to grant Cast Flow permission to post on your behalf through Warpcast
+- **Profile Created**: Your user profile is stored in Supabase with your FID and signer credentials
 
-### For Community Members
+#### **2. Schedule Your Content** ✍️
+- **Compose Thread**: Create multi-post threads (2+ posts) with rich text content
+- **Add Images**: Upload images for each post via Supabase Storage
+- **Set Date & Time**: Choose exactly when you want your content to go live
+- **Save to Database**: Posts are saved with status "scheduled" in Supabase
 
-1. **Browse the Leaderboard**: See top contributors and active users
-2. **Engage with Content**: Like, recast, or comment on posts with active tip pools
-3. **Earn Rewards**: Automatically become eligible for tips based on your interactions
-4. **Claim Your Tips**: Visit your profile to claim accumulated rewards in ETH, USDC, or other tokens
+#### **3. Automated Posting** ⚡
+- **GitHub Actions**: A cron job runs every 15 minutes checking for due posts
+- **Smart Processing**: Fetches all posts where `scheduled_time <= now` and `status = 'scheduled'`
+- **Publish to Farcaster**: Uses Neynar API with your signer to publish casts
+- **Update Status**: Post status changes to "posted" and `cast_hash` is stored for tracking
+- **Manual Override**: Use "Process Now" button to post immediately without waiting
+
+#### **4. Configure Tip Pools** (Optional) 💰
+- **Select Post**: Choose from your scheduled posts in the Tips page
+- **Set Rewards**: Configure token type (ETH, USDC, or custom tokens) and amounts
+- **Define Triggers**: Set interaction requirements (likes, recasts, comments)
+- **Smart Contract**: Tip pool data is linked to the CastFlowTippingV3 contract on Base
+- **Auto-Expiry**: Unclaimed tips automatically refund after 30 days
+
+#### **5. Track Engagement** 📊
+- **Interaction Monitoring**: Track who engages with your posts via Farcaster frames (in development)
+- **Eligibility System**: Users who meet trigger conditions become eligible for tips
+- **Leaderboard**: View top contributors and engagement metrics
+- **Real-time Updates**: Status page shows all your scheduled and posted content
+
+#### **6. Claim Rewards** 🎁
+- **View Balance**: Check claimable amounts in your profile (ETH, USDC, ENB, custom tokens)
+- **One-Click Claim**: Click claim button for any token with available balance
+- **Smart Contract**: Direct interaction with Base network to transfer tokens
+- **Instant Update**: Claimed amount resets to 0 after successful transaction
+
+#### **7. Token-Gated Access** 🔑
+- **Auto-Detection**: System checks your wallet for specific token holdings
+- **Enhanced Features**: Token holders get premium benefits and unlimited access
+- **Admin Control**: Admins configure token requirements via dashboard
+- **Multi-Token**: Support for ENB, custom project tokens, and more
+
+---
+
+### **For Different User Types**
+
+**Content Creators:**
+- Schedule unlimited posts in advance
+- Set up tip pools to reward engaged followers
+- Track performance on leaderboard
+- Claim tips from your community
+
+**Community Members:**
+- Engage with posts (like, recast, comment)
+- Earn tips automatically for interactions
+- Claim accumulated rewards anytime
+- Compete on leaderboard rankings
+
+**Token Holders:**
+- Get enhanced platform features
+- Access exclusive benefits
+- Bypass standard limitations
+
+**Admins:**
+- Manage token-gating configuration
+- Monitor system health
+- Configure access requirements
+- Track platform metrics
 
 ---
 
@@ -65,29 +122,140 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 
 Cast Flow is built with a modern Web3 stack optimized for the Farcaster ecosystem:
 
-### Frontend
-- **Framework**: Next.js 15 with React 19
+### **Frontend Layer**
+- **Framework**: Next.js 15 (Pages Router) with React 19
 - **Styling**: Tailwind CSS 4 for responsive, mobile-first design
-- **State Management**: Wagmi for wallet interactions, Valtio for global state
-- **Farcaster Integration**: Official Farcaster Mini App SDK
+- **State Management**: 
+  - React Context API (`AuthContext`) for authentication
+  - Wagmi hooks for wallet state
+  - React useState/useEffect for component state
+- **Wallet Integration**: Wagmi v2 + Viem for Base network interactions
+- **Farcaster Integration**: `@farcaster/miniapp-sdk` for frame compatibility
 
-### Backend & Infrastructure
+### **Backend & Infrastructure**
 - **Database**: Supabase (PostgreSQL) with Row Level Security
-- **Storage**: Supabase Storage for image uploads
-- **Authentication**: Multi-method auth (Farcaster SDK + Wagmi)
-- **Automation**: GitHub Actions for scheduled post processing
+  - `users` - User profiles with FID and signer data
+  - `scheduled_posts` - Post queue with status tracking
+  - `tip_pools` - Tip configuration and distribution data
+  - `token_gating_config` - Admin-managed access requirements
+- **Storage**: Supabase Storage (`post-images` bucket) for media uploads
+- **Authentication**: 
+  - Farcaster SDK for FID detection
+  - Wagmi for wallet connection
+  - Neynar API for user data enrichment
+- **Automation**: GitHub Actions cron job (every 15 minutes)
 
-### Blockchain
-- **Network**: Base (Ethereum L2)
-- **Smart Contracts**: CastFlowTippingV3.sol for tip pool management
-- **APIs**: Neynar API for Farcaster operations
+### **Blockchain Layer**
+- **Network**: Base (Ethereum L2) - Low gas fees, EVM compatible
+- **Smart Contracts**: 
+  - `CastFlowTippingV3.sol` - Manages tip pools, claims, refunds
+  - ReentrancyGuard & Pausable for security
+  - Multi-token support (ETH, USDC, ERC20)
+- **Wallet Library**: ethers.js v6 for contract interactions
+- **APIs**: 
+  - Neynar API for casting and user lookup
+  - Base RPC for blockchain queries
 
-### Data Flow
+### **Key Integrations**
+
+**Farcaster Ecosystem:**
 ```
-User Creates Post → Supabase DB → GitHub Actions (15min intervals) →
-Neynar API → Farcaster Network → Post Published →
-Interactions Tracked → Tips Distributed → Users Claim on Base
+Farcaster Mini App SDK → User Detection → Neynar API → 
+Signer Creation → Warpcast Approval → Automated Posting
 ```
+
+**Scheduling System:**
+```
+User Input → Supabase DB → GitHub Actions Cron → 
+API Route Check → Neynar Post → Status Update → Cast Hash Stored
+```
+
+**Tipping Flow:**
+```
+Creator Sets Pool → Smart Contract Deployment → 
+User Interactions → Eligibility Tracking → 
+Profile Claim UI → Contract Call → Token Transfer
+```
+
+### **Data Flow Diagram**
+
+```
+┌─────────────────┐
+│  Farcaster App  │ (User accesses via Warpcast/Mobile)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Next.js App   │ (Frontend - Scheduler, Tips, Profile)
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    ▼         ▼
+┌────────┐ ┌──────────┐
+│ Wagmi  │ │ Supabase │ (Wallet + Database)
+└───┬────┘ └─────┬────┘
+    │            │
+    │            ▼
+    │     ┌─────────────┐
+    │     │GitHub Actions│ (Cron every 15min)
+    │     └──────┬──────┘
+    │            │
+    │            ▼
+    │     ┌────────────┐
+    │     │ Neynar API │ (Post to Farcaster)
+    │     └──────┬─────┘
+    │            │
+    │            ▼
+    │     ┌──────────────┐
+    │     │  Farcaster   │ (Posts published)
+    │     └──────────────┘
+    │
+    ▼
+┌──────────────┐
+│ Base Network │ (Tips & Token Gating)
+└──────────────┘
+```
+
+### **File Structure**
+
+```
+cast-flow/
+├── pages/
+│   ├── scheduler.js          # Post composer UI
+│   ├── tips.js              # Tip pool configuration
+│   ├── profile.js           # User profile & claim UI
+│   ├── leaderboard.js       # Community rankings
+│   ├── admin.js             # Token-gating management
+│   └── api/
+│       ├── schedule.js      # Save scheduled posts
+│       ├── create-signer.js # Neynar signer creation
+│       ├── upload-image.js  # Supabase storage
+│       ├── claimable-tips.js # Fetch user tips
+│       └── cron/
+│           └── process-scheduled-posts.js # Auto-posting
+├── components/
+│   ├── Layout.js            # App shell
+│   ├── BottomNavigation.js  # Mobile nav
+│   └── TipPoolManager.js    # Tip configuration
+├── lib/
+│   ├── farcaster.js         # SDK initialization
+│   ├── supabase.js          # DB client
+│   └── wagmi.js             # Wallet config
+├── utils/
+│   ├── tippingContract.js   # Smart contract helpers
+│   └── tokenGating.js       # Access control logic
+└── contracts/
+    └── CastFlowTippingV3.sol # Solidity contract
+```
+
+### **Security Features**
+
+- ✅ Row Level Security on Supabase tables
+- ✅ CRON_SECRET for webhook protection
+- ✅ Smart contract ReentrancyGuard & Pausable
+- ✅ Admin-only routes with FID verification
+- ✅ Secure signer storage (never exposed to client)
+- ✅ Environment variable validation
 
 ---
 
