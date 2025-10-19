@@ -1,4 +1,4 @@
-# ⚡ Cast Flow
+#  Cast Flow
 
 ### Schedule your Farcaster content and reward your community with on-chain micro-tips
 
@@ -10,7 +10,7 @@ Cast Flow is a decentralized Farcaster mini-app that empowers creators to schedu
 
 Managing a consistent presence on Farcaster while rewarding your most engaged followers shouldn't be complicated. Cast Flow solves this by offering an intuitive scheduling system paired with customizable tip pools that automatically distribute rewards based on user interactions.
 
-Whether you're a creator looking to maintain consistent posting schedules or someone who wants to incentivize community engagement, Cast Flow provides the tools to make it happen—all within a beautiful, mobile-optimized interface designed specifically for the Farcaster ecosystem.
+Whether you're a creator looking to maintain consistent posting schedules or someone who wants to incentivize community engagement, Cast Flow provides the tools to make it happen all within a beautiful, mobile-optimized interface designed specifically for the Farcaster ecosystem.
 
 ---
 
@@ -412,4 +412,4 @@ Having issues or questions?
 
 ---
 
-**Made with ⚡ for the Farcaster community**
+**Made with ❤️ for the Farcaster community**
