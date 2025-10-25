@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { setupEthereumShield } from '../lib/ethereum-shield';
+import { Link } from 'lucide-react';
 
 export default function WalletConnect() {
   const { address, isConnected } = useAccount();
@@ -32,7 +34,7 @@ export default function WalletConnect() {
             gap: '6px'
           }}
         >
-          <span>🔗</span>
+          <Link size={16} className="inline-icon" />
           <span>{formatAddress(address)}</span>
         </button>
       </div>
@@ -44,13 +46,27 @@ export default function WalletConnect() {
       <button 
         className="btn"
         onClick={() => {
+          // First make sure ethereum shield is active
+          setupEthereumShield();
+          
           // Try Farcaster MiniApp first, then injected wallet
           const farcasterConnector = connectors.find(c => c.name === 'Farcaster MiniApp');
           const injectedConnector = connectors.find(c => c.name === 'Injected');
           
           const connector = farcasterConnector || injectedConnector || connectors[0];
           if (connector) {
-            connect({ connector });
+            try {
+              connect({ connector });
+            } catch (error) {
+              console.warn('Wallet connection error:', error);
+              // Force reconnect after a delay if it's provider related
+              if (error.message && error.message.includes('ethereum')) {
+                setTimeout(() => {
+                  setupEthereumShield();
+                  try { connect({ connector }); } catch (e) { console.error('Retry failed:', e); }
+                }, 1000);
+              }
+            }
           }
         }}
         style={{ 

@@ -77,13 +77,39 @@ export const AuthProvider = ({ children }) => {
           // Try to get user data from Neynar using wallet address with timeout
           console.log('🔍 Fetching user data from Neynar for address:', address);
           
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+          let timeoutId;
+          let response;
           
-          const response = await fetch(`/api/get-user-by-address?address=${address}`, {
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
+          try {
+            const controller = new AbortController();
+            timeoutId = setTimeout(() => controller.abort('Request timeout'), 15000); // Increase to 15 seconds
+            
+            response = await fetch(`/api/get-user-by-address?address=${address}`, {
+              signal: controller.signal,
+              // Add cache control to avoid stale responses
+              headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
+              }
+            });
+            
+            clearTimeout(timeoutId);
+          } catch (abortError) {
+            console.warn('API request aborted or timed out:', abortError);
+            // Create a fallback basic user and return early
+            const basicUser = {
+              fid: 0,
+              wallet: address,
+              isConnected: true,
+              username: 'Wallet User',
+              display_name: 'Connected Wallet',
+              bio: 'User with connected wallet',
+              pfp_url: `https://api.dicebear.com/7.x/identicon/svg?seed=${address}`,
+            };
+            
+            setUser(basicUser);
+            localStorage.setItem('user', JSON.stringify(basicUser));
+            return; // Exit early
+          }
           
           if (!response.ok) {
             throw new Error(`API request failed: ${response.status}`);
@@ -128,7 +154,12 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('user', JSON.stringify(basicUser));
           }
         } catch (error) {
+          if (timeoutId) clearTimeout(timeoutId); // Ensure timeout is cleared on error
+          
           console.error('Error fetching user data:', error);
+          if (error.name === 'AbortError') {
+            console.warn('Request was aborted due to timeout');
+          }
           // Fallback to basic user
           const basicUser = {
             fid: 0,

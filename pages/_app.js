@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../contexts/AuthContext';
 import { config } from '../lib/wagmi';
 import { initializeFarcasterSDK } from '../lib/farcaster';
+import { setupEthereumShield } from '../lib/ethereum-shield';
 import Layout from '../components/Layout';
 import ErrorBoundary from '../components/ErrorBoundary';
 import LoadingScreen from '../components/LoadingScreen';
@@ -52,6 +53,10 @@ export default function MyApp({ Component, pageProps }) {
     const initializeApp = async () => {
       try {
         console.log('Starting app initialization...');
+        
+        // Setup ethereum shield before anything else to protect against wallet conflicts
+        setupEthereumShield();
+        
         checkMobile();
         const envInfo = debugEnvironment();
         
@@ -99,6 +104,18 @@ export default function MyApp({ Component, pageProps }) {
             break;
           } catch (error) {
             console.warn(`SDK init attempt ${attempt} failed:`, error);
+            
+            // Check for ethereum provider conflicts and try to recover
+            if (error.message && (
+              error.message.includes('ethereum') ||
+              error.message.includes('Cannot redefine property') ||
+              error.message.includes('AbortError')
+            )) {
+              console.log('Provider conflict detected, attempting recovery...');
+              // Re-setup ethereum shield
+              setupEthereumShield();
+            }
+            
             if (attempt < 3) {
               await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
             }
