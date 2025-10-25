@@ -327,21 +327,18 @@ See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for detailed instructions on de
 - [x] Multi-token tipping smart contract (CastFlowTippingV3)
 - [x] GitHub Actions automation for reliable posting
 - [x] Mobile-optimized Farcaster mini-app interface
-- [x] Token-gated access system
-- [x] Admin panel for system management
 - [x] Leaderboard and user profiles
 
 ### 🚧 In Progress
 - [ ] Smart contract deployment to Base mainnet
 - [ ] Frame integration for in-feed interaction tracking
-- [ ] Enhanced analytics dashboard
 
 ### 🔮 Future Plans
 - [ ] AI-powered content suggestions
 - [ ] Cross-platform scheduling (Twitter, Lens, etc.)
-- [ ] NFT rewards for top contributors
 - [ ] Advanced scheduling features (best time to post, engagement predictions)
 - [ ] Team collaboration tools
+- [ ] Token-gated access system
 - [ ] Multi-language support
 
 ---
