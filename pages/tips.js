@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import Logo from "../components/Logo";
 import { getUserInitials } from "../utils/helpers";
+import { Bell, Coins, FileEdit, CircleDollarSign, DollarSign, ThumbsUp, Repeat, MessageCircle } from "lucide-react";
 
 export default function TipsPage() {
   const { user, authenticated, login } = useAuth();
@@ -30,28 +31,28 @@ export default function TipsPage() {
       name: "Ethereum",
       balance: "0.025 ETH",
       usdValue: "$64.50",
-      icon: "⟠"
+      icon: <CircleDollarSign size={16} />
     },
     {
       symbol: "USDC",
       name: "USD Coin",
       balance: "150.00 USDC",
       usdValue: "$150.00",
-      icon: "💵"
+      icon: <DollarSign size={16} />
     },
     {
       symbol: "FCS",
       name: "Farcaster Token",
       balance: "1,250 FCS",
       usdValue: "$125.00",
-      icon: "🟣"
+      icon: <span className="token-icon farcaster">FC</span>
     },
     {
       symbol: "ENB",
       name: "ENB Token",
       balance: "500 ENB",
       usdValue: "$75.00",
-      icon: "🔷"
+      icon: <span className="token-icon enb">ENB</span>
     }
   ];
 
@@ -171,10 +172,10 @@ export default function TipsPage() {
         <div className="page-header">
           <div>
             <Logo size={28} showText={true} />
-            <p className="page-subtitle">💰 Reward engagement on your posts</p>
+            <p className="page-subtitle"><Coins size={16} className="inline-icon" /> Reward engagement on your posts</p>
           </div>
           <div className="header-actions">
-            <button className="notification-btn">🔔</button>
+            <button className="notification-btn"><Bell size={16} /></button>
             <div className="user-avatar">JD</div>
           </div>
         </div>
@@ -192,11 +193,11 @@ export default function TipsPage() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">💰 Tips Configuration</h1>
+          <h1 className="page-title"><Coins size={20} className="inline-icon" /> Tips Configuration</h1>
           <p className="page-subtitle">Reward engagement on your posts</p>
         </div>
         <div className="header-actions">
-          <button className="notification-btn">🔔</button>
+          <button className="notification-btn"><Bell size={16} /></button>
           <div className="user-avatar">JD</div>
         </div>
       </div>
@@ -205,7 +206,7 @@ export default function TipsPage() {
         {/* Choose Post Section */}
         <div className="tips-section">
           <div className="section-header">
-            <h2>📝 Choose Post to Tip</h2>
+            <h2><FileEdit size={18} className="inline-icon" /> Choose Post to Tip</h2>
           </div>
           
           <div className="post-selector">
@@ -227,7 +228,7 @@ export default function TipsPage() {
         {/* Select Token Section */}
         <div className="tips-section">
           <div className="section-header">
-            <h2>🪙 Select Token</h2>
+            <h2><CircleDollarSign size={18} className="inline-icon" /> Select Token</h2>
           </div>
           
           <div className="token-selector">
@@ -248,7 +249,7 @@ export default function TipsPage() {
         {/* Amount Settings Section */}
         <div className="tips-section">
           <div className="section-header">
-            <h2>💵 Amount Settings</h2>
+            <h2><DollarSign size={18} className="inline-icon" /> Amount Settings</h2>
           </div>
           
           <div className="amount-settings">
@@ -297,7 +298,7 @@ export default function TipsPage() {
         {/* Actions Section */}
         <div className="tips-section">
           <div className="section-header">
-            <h2>💖 Actions</h2>
+            <h2><ThumbsUp size={18} className="inline-icon" /> Actions</h2>
           </div>
           
           <div className="actions-grid">
@@ -305,7 +306,7 @@ export default function TipsPage() {
               className={`action-btn ${actions.likes ? 'active' : ''}`}
               onClick={() => setActions({...actions, likes: !actions.likes})}
             >
-              <span className="action-icon">👍</span>
+              <span className="action-icon"><ThumbsUp size={18} /></span>
               <span className="action-label">Likes</span>
             </button>
             
@@ -313,7 +314,7 @@ export default function TipsPage() {
               className={`action-btn ${actions.recast ? 'active' : ''}`}
               onClick={() => setActions({...actions, recast: !actions.recast})}
             >
-              <span className="action-icon">🔄</span>
+              <span className="action-icon"><Repeat size={18} /></span>
               <span className="action-label">Recast</span>
             </button>
             
@@ -321,7 +322,7 @@ export default function TipsPage() {
               className={`action-btn ${actions.comments ? 'active' : ''}`}
               onClick={() => setActions({...actions, comments: !actions.comments})}
             >
-              <span className="action-icon">💬</span>
+              <span className="action-icon"><MessageCircle size={18} /></span>
               <span className="action-label">Comments</span>
             </button>
           </div>
@@ -339,7 +340,7 @@ export default function TipsPage() {
         {/* Active Tips Section */}
         <div className="tips-section">
           <div className="section-header">
-            <h2>📋 Active Tips</h2>
+            <h2><Coins size={18} className="inline-icon" /> Active Tips</h2>
           </div>
           
           <div className="active-tips-list">
@@ -348,7 +349,7 @@ export default function TipsPage() {
                 <p>Just shipped a new feature for Cast Flow! The micro-tip...</p>
                 <div className="tip-status">
                   <span className="status-indicator"></span>
-                  <span className="status-text">🔴 ⚠️</span>
+                  <span className="status-text">Inactive</span>
                 </div>
               </div>
             ) : (

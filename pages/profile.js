@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import Logo from "../components/Logo";
 import { getUserInitials } from "../utils/helpers";
+import { Bell, User, Link, Copy, BadgeCheck } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, authenticated, login } = useAuth();
@@ -110,7 +111,7 @@ export default function ProfilePage() {
             <Logo size={28} showText={true} />
           </div>
           <div className="header-actions">
-            <button className="notification-btn">🔔</button>
+            <button className="notification-btn"><Bell size={16} /></button>
             <div className="user-avatar">JD</div>
           </div>
         </div>
@@ -128,10 +129,10 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">👤 Profile</h1>
+          <h1 className="page-title"><User size={20} className="inline-icon" /> Profile</h1>
         </div>
         <div className="header-actions">
-          <button className="notification-btn">🔔</button>
+          <button className="notification-btn"><Bell size={16} /></button>
           <div className="user-avatar">
             {getUserInitials(user, 'JD')}
           </div>
@@ -150,7 +151,7 @@ export default function ProfilePage() {
               <h2 className="username">
                 {user?.display_name || user?.username || 'alex.eth'}
               </h2>
-              <span className="verified-badge">✓</span>
+              <span className="verified-badge"><BadgeCheck size={16} className="inline-icon" /></span>
             </div>
             
             <div className="user-subtitle">
@@ -169,14 +170,14 @@ export default function ProfilePage() {
         {/* Connected Wallet */}
         <div className="wallet-section">
           <div className="section-header">
-            <h3>🔗 Connected Wallet</h3>
+            <h3><Link size={18} className="inline-icon" /> Connected Wallet</h3>
           </div>
           
           <div className="wallet-card">
             <div className="wallet-address">
               {address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : '0x742d...7CcE'}
             </div>
-            <button className="copy-btn">📋</button>
+            <button className="copy-btn"><Copy size={16} /></button>
           </div>
         </div>
 

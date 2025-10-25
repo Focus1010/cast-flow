@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
+import { Home, Trophy, Coins, User, Settings } from 'lucide-react';
 
 const BottomNavigation = () => {
   const router = useRouter();
@@ -11,35 +12,35 @@ const BottomNavigation = () => {
     {
       id: 'home',
       label: 'Home',
-      icon: '🏠',
+      icon: <Home size={20} />,
       path: '/',
       active: router.pathname === '/'
     },
     {
       id: 'leaderboard',
       label: 'Leaderboard',
-      icon: '🏆',
+      icon: <Trophy size={20} />,
       path: '/leaderboard',
       active: router.pathname === '/leaderboard'
     },
     {
       id: 'tips',
       label: 'Tips',
-      icon: '💰',
+      icon: <Coins size={20} />,
       path: '/tips',
       active: router.pathname === '/tips'
     },
     {
       id: 'profile',
       label: 'Profile',
-      icon: '👤',
+      icon: <User size={20} />,
       path: '/profile',
       active: router.pathname === '/profile'
     },
     {
       id: 'more',
       label: 'More',
-      icon: '⚙️',
+      icon: <Settings size={20} />,
       path: '/more',
       active: router.pathname === '/more' || (router.pathname === '/admin' && isAdmin)
     }
