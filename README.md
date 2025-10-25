@@ -17,7 +17,7 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 ## ✨ Key Features
 
 ### 📅 Smart Post Scheduling
-- **Thread Composer**: Create multi-post threads with individual text and images
+- **Cast/Thread Composer**: Create multi-post threads with individual text and images
 - **Flexible Timing**: Schedule posts days or weeks in advance
 - **Automated Posting**: GitHub Actions-powered cron jobs ensure reliable post delivery every 15 minutes
 - **Unlimited Scheduling**: Schedule as many posts as you need
@@ -30,11 +30,9 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 
 ### 🎯 Token-Gated Access
 - **Enhanced Features**: Token holders get premium access and benefits
-- **Dynamic Configuration**: Admin panel for managing access requirements
 - **Multi-Token Support**: Integrate your project's token for exclusive features
 
 ### 👤 User Profiles & Leaderboard
-- **Activity Tracking**: Monitor your scheduled posts and engagement
 - **Tip Management**: Claim earned tips directly from your profile
 - **Community Rankings**: Leaderboard showcases top contributors
 - **Wallet Integration**: Seamless Base network wallet connection
@@ -46,13 +44,13 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 ### **Complete Workflow**
 
 #### **1. Initial Setup** 🔐
-- **Connect Wallet**: Open Cast Flow in Farcaster and connect your Base wallet via Wagmi
+- **Connect Wallet**: Open Cast Flow in Farcaster and it autoconnect your Base wallet via Wagmi
 - **Authentication**: Your Farcaster ID (FID) and wallet address are automatically detected
 - **Create Signer**: One-time setup to grant Cast Flow permission to post on your behalf through Warpcast
 - **Profile Created**: Your user profile is stored in Supabase with your FID and signer credentials
 
 #### **2. Schedule Your Content** ✍️
-- **Compose Thread**: Create multi-post threads (2+ posts) with rich text content
+- **Compose Cast/Thread**: Create multi-post threads (2+ posts) with rich text content
 - **Add Images**: Upload images for each post via Supabase Storage
 - **Set Date & Time**: Choose exactly when you want your content to go live
 - **Save to Database**: Posts are saved with status "scheduled" in Supabase
@@ -68,7 +66,7 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 - **Select Post**: Choose from your scheduled posts in the Tips page
 - **Set Rewards**: Configure token type (ETH, USDC, or custom tokens) and amounts
 - **Define Triggers**: Set interaction requirements (likes, recasts, comments)
-- **Smart Contract**: Tip pool data is linked to the CastFlowTippingV3 contract on Base
+- **Smart Contract**: Tip pool data is linked to the CastFlow  contract which will be deployed on Base
 - **Auto-Expiry**: Unclaimed tips automatically refund after 30 days
 
 #### **5. Track Engagement** 📊
@@ -78,16 +76,15 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 - **Real-time Updates**: Status page shows all your scheduled and posted content
 
 #### **6. Claim Rewards** 🎁
-- **View Balance**: Check claimable amounts in your profile (ETH, USDC, ENB, custom tokens)
+- **View Balance**: Check claimable amounts in your profile (ETH, USDC, custom tokens)
 - **One-Click Claim**: Click claim button for any token with available balance
 - **Smart Contract**: Direct interaction with Base network to transfer tokens
 - **Instant Update**: Claimed amount resets to 0 after successful transaction
 
 #### **7. Token-Gated Access** 🔑
 - **Auto-Detection**: System checks your wallet for specific token holdings
-- **Enhanced Features**: Token holders get premium benefits and unlimited access
-- **Admin Control**: Admins configure token requirements via dashboard
-- **Multi-Token**: Support for ENB, custom project tokens, and more
+- **Enhanced Features**: Token holders get premium benefits and unlimited access (In Development)
+- **Multi-Token**: Support for custom project tokens, and more
 
 ---
 
@@ -96,7 +93,7 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 **Content Creators:**
 - Schedule unlimited posts in advance
 - Set up tip pools to reward engaged followers
-- Track performance on leaderboard
+- Track top users on leaderboard
 - Claim tips from your community
 
 **Community Members:**
@@ -108,7 +105,7 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 **Token Holders:**
 - Get enhanced platform features
 - Access exclusive benefits
-- Bypass standard limitations
+- Bypass standard limitations (All these will be implemented in the future)
 
 **Admins:**
 - Manage token-gating configuration
@@ -254,20 +251,15 @@ cast-flow/
 - ✅ CRON_SECRET for webhook protection
 - ✅ Smart contract ReentrancyGuard & Pausable
 - ✅ Admin-only routes with FID verification
-- ✅ Secure signer storage (never exposed to client)
+- ✅ Secure signer storage (which will never be never exposed to client)
 - ✅ Environment variable validation
 
 ---
 
 ## 🎥 Demo
 
-*Coming Soon: Live demo link and walkthrough video*
+*(https://youtube.com/shorts/rlq8Adm-MrY?feature=share)*
 
-**Screenshots:**
-- Scheduler interface with thread composer
-- Tip pool configuration panel
-- User profile with claimable rewards
-- Mobile-optimized leaderboard
 
 ---
 
@@ -364,6 +356,7 @@ See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for detailed instructions on de
 - GitHub: [Focus1010]
 - Discord: [Focus3547]
 - Twitter: [@justfocus672]
+- Twitter: [@castflowapp]
 
 
 ### Built With Love For
@@ -412,4 +405,4 @@ Having issues or questions?
 
 ---
 
-**Made with ❤️ for the Farcaster community**
+**Made with ❤️ for the Base App and Farcaster community**
