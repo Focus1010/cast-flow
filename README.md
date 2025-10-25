@@ -6,7 +6,7 @@ Cast Flow is a decentralized Farcaster mini-app that empowers creators to schedu
 
 ---
 
-## 🌟 Overview
+## Overview
 
 Managing a consistent presence on Farcaster while rewarding your most engaged followers shouldn't be complicated. Cast Flow solves this by offering an intuitive scheduling system paired with customizable tip pools that automatically distribute rewards based on user interactions.
 
@@ -14,74 +14,74 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 📅 Smart Post Scheduling
+### Smart Post Scheduling
 - **Cast/Thread Composer**: Create multi-post threads with individual text and images
 - **Flexible Timing**: Schedule posts days or weeks in advance
 - **Automated Posting**: GitHub Actions-powered cron jobs ensure reliable post delivery every 15 minutes
 - **Unlimited Scheduling**: Schedule as many posts as you need
 
-### 💰 Micro-Tipping System
+### Micro-Tipping System
 - **Customizable Tip Pools**: Set up rewards for any scheduled post
 - **Multi-Token Support**: Distribute tips in ETH, USDC, or custom tokens
 - **Interaction Triggers**: Reward users for likes, recasts, or comments
 - **Auto-Refund Protection**: Unclaimed tips automatically refund after 30 days
 
-### 🎯 Token-Gated Access
+### Token-Gated Access
 - **Enhanced Features**: Token holders get premium access and benefits
 - **Multi-Token Support**: Integrate your project's token for exclusive features
 
-### 👤 User Profiles & Leaderboard
+### User Profiles & Leaderboard
 - **Tip Management**: Claim earned tips directly from your profile
 - **Community Rankings**: Leaderboard showcases top contributors
 - **Wallet Integration**: Seamless Base network wallet connection
 
 ---
 
-## 🚀 How It Works
+## How It Works
 
 ### **Complete Workflow**
 
-#### **1. Initial Setup** 🔐
+#### **1. Initial Setup** 
 - **Connect Wallet**: Open Cast Flow in Farcaster and it autoconnect your Base wallet via Wagmi
 - **Authentication**: Your Farcaster ID (FID) and wallet address are automatically detected
 - **Create Signer**: One-time setup to grant Cast Flow permission to post on your behalf through Warpcast
 - **Profile Created**: Your user profile is stored in Supabase with your FID and signer credentials
 
-#### **2. Schedule Your Content** ✍️
+#### **2. Schedule Your Content** 
 - **Compose Cast/Thread**: Create multi-post threads (2+ posts) with rich text content
 - **Add Images**: Upload images for each post via Supabase Storage
 - **Set Date & Time**: Choose exactly when you want your content to go live
 - **Save to Database**: Posts are saved with status "scheduled" in Supabase
 
-#### **3. Automated Posting** ⚡
+#### **3. Automated Posting** 
 - **GitHub Actions**: A cron job runs every 15 minutes checking for due posts
 - **Smart Processing**: Fetches all posts where `scheduled_time <= now` and `status = 'scheduled'`
 - **Publish to Farcaster**: Uses Neynar API with your signer to publish casts
 - **Update Status**: Post status changes to "posted" and `cast_hash` is stored for tracking
 - **Manual Override**: Use "Process Now" button to post immediately without waiting
 
-#### **4. Configure Tip Pools** (Optional) 💰
+#### **4. Configure Tip Pools** (Optional) 
 - **Select Post**: Choose from your scheduled posts in the Tips page
 - **Set Rewards**: Configure token type (ETH, USDC, or custom tokens) and amounts
 - **Define Triggers**: Set interaction requirements (likes, recasts, comments)
 - **Smart Contract**: Tip pool data is linked to the CastFlow  contract which will be deployed on Base
 - **Auto-Expiry**: Unclaimed tips automatically refund after 30 days
 
-#### **5. Track Engagement** 📊
+#### **5. Track Engagement** 
 - **Interaction Monitoring**: Track who engages with your posts via Farcaster frames (in development)
 - **Eligibility System**: Users who meet trigger conditions become eligible for tips
 - **Leaderboard**: View top contributors and engagement metrics
 - **Real-time Updates**: Status page shows all your scheduled and posted content
 
-#### **6. Claim Rewards** 🎁
+#### **6. Claim Rewards** 
 - **View Balance**: Check claimable amounts in your profile (ETH, USDC, custom tokens)
 - **One-Click Claim**: Click claim button for any token with available balance
 - **Smart Contract**: Direct interaction with Base network to transfer tokens
 - **Instant Update**: Claimed amount resets to 0 after successful transaction
 
-#### **7. Token-Gated Access** 🔑
+#### **7. Token-Gated Access** 
 - **Auto-Detection**: System checks your wallet for specific token holdings
 - **Enhanced Features**: Token holders get premium benefits and unlimited access (In Development)
 - **Multi-Token**: Support for custom project tokens, and more
@@ -115,7 +115,7 @@ Whether you're a creator looking to maintain consistent posting schedules or som
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 Cast Flow is built with a modern Web3 stack optimized for the Farcaster ecosystem:
 
@@ -263,7 +263,7 @@ cast-flow/
 
 ---
 
-## 💻 Installation & Running Locally
+## Installation & Running Locally
 
 ### Prerequisites
 - Node.js 18+ and npm
@@ -320,20 +320,20 @@ See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for detailed instructions on de
 
 ---
 
-## 🗺️ Roadmap & Milestones
+## Roadmap & Milestones
 
-### ✅ Completed
+### Completed
 - [x] Core scheduling functionality with thread support
 - [x] Multi-token tipping smart contract (CastFlowTippingV3)
 - [x] GitHub Actions automation for reliable posting
 - [x] Mobile-optimized Farcaster mini-app interface
 - [x] Leaderboard and user profiles
 
-### 🚧 In Progress
+### In Progress
 - [ ] Smart contract deployment to Base mainnet
 - [ ] Frame integration for in-feed interaction tracking
 
-### 🔮 Future Plans
+### Future Plans
 - [ ] AI-powered content suggestions
 - [ ] Cross-platform scheduling (Twitter, Lens, etc.)
 - [ ] Advanced scheduling features (best time to post, engagement predictions)
@@ -369,7 +369,7 @@ See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for detailed instructions on de
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
@@ -381,7 +381,7 @@ Permission is granted to use, copy, modify, merge, publish, distribute, sublicen
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Whether it's bug reports, feature requests, or code contributions, we appreciate your help in making Cast Flow better.
 
@@ -393,7 +393,7 @@ Contributions are welcome! Whether it's bug reports, feature requests, or code c
 
 ---
 
-## 📞 Support & Contact
+## Support & Contact
 
 Having issues or questions?
 - Open an issue on GitHub
