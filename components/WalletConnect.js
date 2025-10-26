@@ -47,7 +47,11 @@ export default function WalletConnect() {
         className="btn"
         onClick={() => {
           // First make sure ethereum shield is active
-          setupEthereumShield();
+          try {
+            setupEthereumShield();
+          } catch (e) {
+            console.warn('Wallet Connect: Shield setup failed, continuing anyway:', e);
+          }
           
           // Try Farcaster MiniApp first, then injected wallet
           const farcasterConnector = connectors.find(c => c.name === 'Farcaster MiniApp');

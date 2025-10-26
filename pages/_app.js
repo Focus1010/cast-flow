@@ -55,7 +55,23 @@ export default function MyApp({ Component, pageProps }) {
         console.log('Starting app initialization...');
         
         // Setup ethereum shield before anything else to protect against wallet conflicts
-        setupEthereumShield();
+        try {
+          setupEthereumShield();
+        } catch (shieldError) {
+          console.warn('Ethereum shield setup failed, continuing anyway:', shieldError);
+          
+          // Setup a simple event handler as fallback
+          try {
+            window.addEventListener('error', (event) => {
+              if (event.error?.message?.includes('ethereum') || 
+                  event.error?.message?.includes('redefine property')) {
+                console.warn('Ethereum-related error intercepted:', event.error);
+                event.preventDefault();
+                return true;
+              }
+            }, true);
+          } catch (e) {}
+        }
         
         checkMobile();
         const envInfo = debugEnvironment();
