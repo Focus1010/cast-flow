@@ -1,0 +1,15 @@
+name: Process Scheduled Posts
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Run every 15 minutes
+
+jobs:
+  process-posts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process scheduled posts
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            ${{ secrets.APP_URL }}/api/cron/process-scheduled-posts

@@ -6,7 +6,11 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "setup": "node scripts/setup-database.js",
+    "setup:cron": "node scripts/setup-cron.js",
+    "deploy:contract": "node scripts/deploy-tipping-contract.js",
+    "process:posts": "curl -X POST http://localhost:3000/api/manual-process-posts"
   },
   "dependencies": {
     "@farcaster/miniapp-sdk": "^0.1.10",
