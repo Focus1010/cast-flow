@@ -399,7 +399,3 @@ Having issues or questions?
 - Open an issue on GitHub
 - Reach out on Farcaster
 - Check the [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) for common setup issues
-
----
-
-**Made with ❤️ for the Base App and Farcaster community**
